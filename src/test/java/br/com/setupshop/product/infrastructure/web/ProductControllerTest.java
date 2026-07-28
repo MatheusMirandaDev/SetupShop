@@ -21,7 +21,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-
 @WebMvcTest(ProductController.class)
 class ProductControllerTest {
 
@@ -91,5 +90,34 @@ class ProductControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(createProductUseCase);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenDomainRejectsProduct()  throws Exception {
+        // Given
+        String requestBody = """
+                {
+                  "name": "Teclado AULA F75",
+                  "description": "Teclado mecanico",
+                  "price": 300.999
+                }
+                """;
+
+        when(createProductUseCase.execute(any(CreateProductCommand.class)))
+                .thenThrow(new IllegalArgumentException("Price must have at most two decimal places"));
+
+        // When - Then
+        mockMvc.perform(post("/products")
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Price must have at most two decimal places"))
+                .andExpect(jsonPath("$.path").value("/products"));
+
+        verify(createProductUseCase)
+                .execute(any(CreateProductCommand.class));
     }
 }
