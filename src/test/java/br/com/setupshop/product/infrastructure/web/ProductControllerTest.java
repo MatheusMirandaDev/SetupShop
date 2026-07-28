@@ -87,7 +87,13 @@ class ProductControllerTest {
         mockMvc.perform(post("/products")
                         .contentType(APPLICATION_JSON)
                         .content(requestBody))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.path").value("/products"))
+                .andExpect(jsonPath("$.fieldErrors.name").value("must not be blank"));
 
         verifyNoInteractions(createProductUseCase);
     }
