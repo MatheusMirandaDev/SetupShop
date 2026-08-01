@@ -2,6 +2,8 @@ package br.com.setupshop.product.infrastructure.web;
 
 import br.com.setupshop.product.application.usecase.create.CreateProductCommand;
 import br.com.setupshop.product.application.usecase.create.CreateProductUseCase;
+import br.com.setupshop.product.application.usecase.get.GetProductByIdUseCase;
+import br.com.setupshop.product.domain.exception.ProductNotFoundException;
 import br.com.setupshop.product.domain.model.Product;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -16,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,6 +32,9 @@ class ProductControllerTest {
 
     @MockitoBean
     private CreateProductUseCase createProductUseCase;
+
+    @MockitoBean
+    private GetProductByIdUseCase getProductByIdUseCase;
 
     @Test
     void shouldCreateProductAndReturnCreated() throws Exception {
@@ -125,5 +131,46 @@ class ProductControllerTest {
 
         verify(createProductUseCase)
                 .execute(any(CreateProductCommand.class));
+    }
+
+    @Test
+    void shouldReturnProductWhenFound() throws Exception {
+        Long productId = 1L;
+        String name = "Teclado AULA F75";
+        String description = "Teclado mecanico";
+        BigDecimal price = new BigDecimal("300.00");
+
+        Product createdProduct = new Product(name, description, price);
+
+        when(getProductByIdUseCase.execute(productId)).thenReturn(createdProduct);
+
+        mockMvc.perform(get("/products/{id}",  productId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.name").value(name))
+                .andExpect(jsonPath("$.description").value(description))
+                .andExpect(jsonPath("$.price").value(price.doubleValue()))
+                .andExpect(jsonPath("$.active").value(true));
+
+        verify(getProductByIdUseCase).execute(productId);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenProductDoesNotExist() throws Exception {
+        Long productId = 1000L;
+
+        when(getProductByIdUseCase.execute(productId))
+                .thenThrow(new ProductNotFoundException(productId));
+
+        mockMvc.perform(get("/products/{id}",  productId))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Product not found with id: " + productId))
+                .andExpect(jsonPath("$.path").value("/products/" + productId));
+
+        verify(getProductByIdUseCase).execute(productId);
     }
 }

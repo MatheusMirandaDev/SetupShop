@@ -1,5 +1,6 @@
 package br.com.setupshop.product.infrastructure.web.error;
 
+import br.com.setupshop.product.domain.exception.ProductNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -50,5 +51,21 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleProductNotFoundException(ProductNotFoundException exception, HttpServletRequest request) {
+
+        var status = HttpStatus.NOT_FOUND;
+
+        ApiErrorResponse errorResponse = new ApiErrorResponse(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity.status(status).body(errorResponse);
     }
 }
