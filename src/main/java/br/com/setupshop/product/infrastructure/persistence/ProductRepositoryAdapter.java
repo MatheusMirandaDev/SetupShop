@@ -4,6 +4,7 @@ import br.com.setupshop.product.domain.model.Product;
 import br.com.setupshop.product.domain.repository.ProductRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -23,5 +24,10 @@ public class ProductRepositoryAdapter implements ProductRepository {
     @Override
     public Product save(Product product) {
         return productRepository.save(product);
+    }
+
+    @Override
+    public List<Product> findAll() {
+        return productRepository.findAll();
     }
 }
