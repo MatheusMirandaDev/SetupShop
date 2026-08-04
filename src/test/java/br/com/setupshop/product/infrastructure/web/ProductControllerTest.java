@@ -3,6 +3,7 @@ package br.com.setupshop.product.infrastructure.web;
 import br.com.setupshop.product.application.usecase.create.CreateProductCommand;
 import br.com.setupshop.product.application.usecase.create.CreateProductUseCase;
 import br.com.setupshop.product.application.usecase.get.GetProductByIdUseCase;
+import br.com.setupshop.product.application.usecase.list.ListProductsUseCase;
 import br.com.setupshop.product.domain.exception.ProductNotFoundException;
 import br.com.setupshop.product.domain.model.Product;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,6 +38,9 @@ class ProductControllerTest {
 
     @MockitoBean
     private GetProductByIdUseCase getProductByIdUseCase;
+
+    @MockitoBean
+    private ListProductsUseCase listProductsUseCase;
 
     @Test
     void shouldCreateProductAndReturnCreated() throws Exception {
@@ -172,5 +178,48 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.path").value("/products/" + productId));
 
         verify(getProductByIdUseCase).execute(productId);
+    }
+
+    @Test
+    void shouldReturnAllProducts() throws Exception {
+
+        String firstProductName = "Teclado AULA F75";
+        String firstProductDescription = "Teclado mecanico";
+        BigDecimal firstProductPrice = new BigDecimal("300.00");
+        Product product1 = new Product(firstProductName, firstProductDescription, firstProductPrice);
+
+        String secondProductName = "Mouse Mchose A9";
+        String secondProductDescription = "Mouse para computador";
+        BigDecimal secondProductPrice = new BigDecimal("180.00");
+        Product product2 = new Product(secondProductName, secondProductDescription, secondProductPrice);
+
+        when(listProductsUseCase.execute()).thenReturn(List.of(product1, product2));
+
+        mockMvc.perform(get("/products"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].name").value(firstProductName))
+                .andExpect(jsonPath("$[0].description").value(firstProductDescription))
+                .andExpect(jsonPath("$[0].price").value(firstProductPrice.doubleValue()))
+                .andExpect(jsonPath("$[0].active").value(true))
+                .andExpect(jsonPath("$[1].name").value(secondProductName))
+                .andExpect(jsonPath("$[1].description").value(secondProductDescription))
+                .andExpect(jsonPath("$[1].price").value(secondProductPrice.doubleValue()))
+                .andExpect(jsonPath("$[1].active").value(true));
+
+        verify(listProductsUseCase).execute();
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoProductsExist() throws Exception {
+        when(listProductsUseCase.execute()).thenReturn(List.of());
+
+        mockMvc.perform(get("/products"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()").value(0));
+
+        verify(listProductsUseCase).execute();
     }
 }
