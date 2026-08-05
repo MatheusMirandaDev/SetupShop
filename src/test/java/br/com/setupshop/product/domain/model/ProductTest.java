@@ -203,4 +203,90 @@ class ProductTest {
         // Then
         assertEquals(price, product.getPrice());
     }
+
+    @Test
+    void shouldChangeAndNormalizeProductName() {
+        // Given
+        String name = "Exemplo";
+        String description = "Teclado Mecanico para computador";
+        BigDecimal price = new BigDecimal("300.00");
+
+        Product product = new Product(name, description, price);
+
+        // When
+        String newName = "   Teclado AULA F75   ";
+        product.changeName(newName);
+
+        // Then
+        assertEquals("Teclado AULA F75", product.getName());
+    }
+
+    @Test
+    void shouldRejectInvalidNameWhenChangingProductName() {
+        // Given
+        String name = "Teclado AULA F75";
+        String description = "Exemplo";
+        BigDecimal price = new BigDecimal("300.00");
+
+        Product product = new Product(name, description, price);
+        String newName = null;
+
+        // When - Then
+        assertThrows(IllegalArgumentException.class, () -> product.changeName(newName));
+        assertEquals("Teclado AULA F75", product.getName());
+    }
+
+    @Test
+    void shouldChangeAndNormalizeProductDescription() {
+        // Given
+        String name = "Teclado AULA F75";
+        String description = "Exemplo";
+        BigDecimal price = new BigDecimal("300.00");
+
+        Product product = new Product(name, description, price);
+        String newDescription = "   Teclado Mecanico para computador   ";
+        product.changeDescription(newDescription);
+
+        assertEquals("Teclado Mecanico para computador",  product.getDescription());
+
+    }
+
+    @Test
+    void shouldRemoveDescriptionWhenChangingToBlank(){
+        String name = "Teclado AULA F75";
+        String description = "Exemplo";
+        BigDecimal price = new BigDecimal("300.00");
+
+        Product product = new Product(name, description, price);
+        String newDescription = "   ";
+        product.changeDescription(newDescription);
+
+        assertNull(product.getDescription());
+    }
+
+    @Test
+    void shouldChangeAndNormalizeProductPrice(){
+        String name = "Exemplo";
+        String description = "Exemplo";
+        BigDecimal price = new BigDecimal("0");
+
+        Product product = new Product(name, description, price);
+        BigDecimal newPrice = new BigDecimal("300.000");
+        product.changePrice(newPrice);
+
+        assertEquals(new BigDecimal("300.00"), product.getPrice());
+    }
+
+    @Test
+    void shouldRejectInvalidPriceWhenChangingProductPrice(){
+        String name = "Exemplo";
+        String description = "Exemplo";
+        BigDecimal price = new BigDecimal("300");
+
+        Product product = new Product(name, description, price);
+        BigDecimal newPrice = new BigDecimal("-1");
+
+
+        assertThrows(IllegalArgumentException.class, () -> product.changePrice(newPrice));
+    }
 }

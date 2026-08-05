@@ -84,6 +84,18 @@ public class Product {
         }
     }
 
+    public void changeName(String newName) {
+        this.name = validateAndNormalizeName(newName);
+    }
+
+    public void changeDescription(String newDescription) {
+        this.description = validateAndNormalizeDescription(newDescription);
+    }
+
+    public void changePrice(BigDecimal newPrice) {
+        this.price = validateAndNormalizePrice(newPrice);
+    }
+
     public Product(String name, String description, BigDecimal price) {
         this.name = validateAndNormalizeName(name);
         this.description = validateAndNormalizeDescription(description);
