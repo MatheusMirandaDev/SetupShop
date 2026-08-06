@@ -4,6 +4,8 @@ import br.com.setupshop.product.application.usecase.create.CreateProductCommand;
 import br.com.setupshop.product.application.usecase.create.CreateProductUseCase;
 import br.com.setupshop.product.application.usecase.get.GetProductByIdUseCase;
 import br.com.setupshop.product.application.usecase.list.ListProductsUseCase;
+import br.com.setupshop.product.application.usecase.update.UpdateProductCommand;
+import br.com.setupshop.product.application.usecase.update.UpdateProductUseCase;
 import br.com.setupshop.product.domain.exception.ProductNotFoundException;
 import br.com.setupshop.product.domain.model.Product;
 import org.junit.jupiter.api.Test;
@@ -18,13 +20,13 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProductController.class)
@@ -41,6 +43,9 @@ class ProductControllerTest {
 
     @MockitoBean
     private ListProductsUseCase listProductsUseCase;
+
+    @MockitoBean
+    private UpdateProductUseCase updateProductUseCase;
 
     @Test
     void shouldCreateProductAndReturnCreated() throws Exception {
@@ -221,5 +226,104 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
 
         verify(listProductsUseCase).execute();
+    }
+
+    @Test
+    void shouldPartiallyUpdateProductAndReturnOk() throws Exception {
+        var productId =  1L;
+        var nameUpdated = "Mouse Mchose A9 PRO";
+        var priceUpdated = new BigDecimal("200.00");
+        var expectedDescription = "Mouse para computador";
+
+        Product updatedProduct = new Product(
+                nameUpdated,
+                expectedDescription,
+                priceUpdated
+        );
+
+
+        when(updateProductUseCase.execute(eq(productId), any(UpdateProductCommand.class))).thenReturn(updatedProduct);
+
+        String requestBody = """
+                {
+                  "name": "Mouse Mchose A9 PRO",
+                  "description": null,
+                  "price": 200.00
+                }
+                """;
+
+        mockMvc.perform(patch("/products/{id}", productId)
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.name").value(nameUpdated))
+                .andExpect(jsonPath("$.description").value(expectedDescription))
+                .andExpect(jsonPath("$.price").value(priceUpdated.doubleValue()))
+                .andExpect(jsonPath("$.active").value(true));
+
+        ArgumentCaptor<UpdateProductCommand> argumentCaptor =
+                ArgumentCaptor.forClass(UpdateProductCommand.class);
+
+        verify(updateProductUseCase)
+                .execute(eq(productId), argumentCaptor.capture());
+
+        var capturedCommand = argumentCaptor.getValue();
+
+        assertEquals(nameUpdated, capturedCommand.name());
+        assertNull(capturedCommand.description());
+        assertEquals(0, priceUpdated.compareTo(capturedCommand.price()));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenUpdateRequestIsInvalid() throws Exception {
+        var productId =  1L;
+
+        String description = "A".repeat(501);
+        String requestBody = """
+        {
+          "description": "%s"
+        }
+        """.formatted(description);
+
+        mockMvc.perform(patch("/products/{id}", productId)
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.path").value("/products/" + productId))
+                .andExpect(jsonPath("$.fieldErrors.description").exists());
+
+        verifyNoInteractions(updateProductUseCase);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingNonexistentProduct() throws Exception {
+        var productId =  1L;
+
+        String requestBody = """
+        {
+          "price": 200
+        }
+        """;
+
+        when(updateProductUseCase.execute(eq(productId), any(UpdateProductCommand.class))).thenThrow(new ProductNotFoundException(productId));
+
+        mockMvc.perform(patch("/products/{id}", productId)
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Product not found with id: " + productId))
+                .andExpect(jsonPath("$.path").value("/products/" + productId));
+
+        verify(updateProductUseCase).execute(eq(productId), any(UpdateProductCommand.class));
     }
 }
