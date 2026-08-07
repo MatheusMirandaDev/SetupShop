@@ -96,6 +96,10 @@ public class Product {
         this.price = validateAndNormalizePrice(newPrice);
     }
 
+    public void deactivate() {
+        this.active = false;
+    }
+
     public Product(String name, String description, BigDecimal price) {
         this.name = validateAndNormalizeName(name);
         this.description = validateAndNormalizeDescription(description);

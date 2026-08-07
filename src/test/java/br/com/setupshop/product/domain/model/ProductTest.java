@@ -286,7 +286,31 @@ class ProductTest {
         Product product = new Product(name, description, price);
         BigDecimal newPrice = new BigDecimal("-1");
 
-
         assertThrows(IllegalArgumentException.class, () -> product.changePrice(newPrice));
+    }
+
+    @Test
+    void shouldDeactivateProduct(){
+        String name = "Exemplo";
+        String description = "Exemplo";
+        BigDecimal price = new BigDecimal("300");
+
+        Product product = new Product(name, description, price);
+
+        product.deactivate();
+        assertFalse(product.isActive());
+    }
+
+    @Test
+    void shouldRemainInactiveWhenDeactivatedAgain() {
+        String name = "Exemplo";
+        String description = "Exemplo";
+        BigDecimal price = new BigDecimal("300");
+
+        Product product = new Product(name, description, price);
+
+        product.deactivate();
+        product.deactivate();
+        assertFalse(product.isActive());
     }
 }
