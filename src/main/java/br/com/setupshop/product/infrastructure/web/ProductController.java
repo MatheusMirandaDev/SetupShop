@@ -2,6 +2,7 @@ package br.com.setupshop.product.infrastructure.web;
 
 import br.com.setupshop.product.application.usecase.create.CreateProductCommand;
 import br.com.setupshop.product.application.usecase.create.CreateProductUseCase;
+import br.com.setupshop.product.application.usecase.deactivate.DeactivateProductUseCase;
 import br.com.setupshop.product.application.usecase.get.GetProductByIdUseCase;
 import br.com.setupshop.product.application.usecase.list.ListProductsUseCase;
 import br.com.setupshop.product.application.usecase.update.UpdateProductCommand;
@@ -25,12 +26,14 @@ public class ProductController {
     private final GetProductByIdUseCase getProductByIdUseCase;
     private final ListProductsUseCase listProductsUseCase;
     private final UpdateProductUseCase updateProductUseCase;
+    private final DeactivateProductUseCase deactivateProductUseCase;
 
-    public ProductController(CreateProductUseCase productUseCase, GetProductByIdUseCase productByIdUseCase, ListProductsUseCase listProductsUseCase, UpdateProductUseCase updateProductUseCase) {
+    public ProductController(CreateProductUseCase productUseCase, GetProductByIdUseCase productByIdUseCase, ListProductsUseCase listProductsUseCase, UpdateProductUseCase updateProductUseCase, DeactivateProductUseCase deactivateProductUseCase) {
         this.createProductUseCase = productUseCase;
         this.getProductByIdUseCase = productByIdUseCase;
         this.listProductsUseCase = listProductsUseCase;
         this.updateProductUseCase = updateProductUseCase;
+        this.deactivateProductUseCase = deactivateProductUseCase;
     }
 
     @PostMapping
@@ -108,5 +111,11 @@ public class ProductController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivateProduct(@PathVariable Long id) {
+        deactivateProductUseCase.execute(id);
+        return ResponseEntity.noContent().build();
     }
 }

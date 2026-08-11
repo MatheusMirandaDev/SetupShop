@@ -2,6 +2,7 @@ package br.com.setupshop.product.infrastructure.web;
 
 import br.com.setupshop.product.application.usecase.create.CreateProductCommand;
 import br.com.setupshop.product.application.usecase.create.CreateProductUseCase;
+import br.com.setupshop.product.application.usecase.deactivate.DeactivateProductUseCase;
 import br.com.setupshop.product.application.usecase.get.GetProductByIdUseCase;
 import br.com.setupshop.product.application.usecase.list.ListProductsUseCase;
 import br.com.setupshop.product.application.usecase.update.UpdateProductCommand;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -46,6 +48,9 @@ class ProductControllerTest {
 
     @MockitoBean
     private UpdateProductUseCase updateProductUseCase;
+
+    @MockitoBean
+    private DeactivateProductUseCase deactivateProductUseCase;
 
     @Test
     void shouldCreateProductAndReturnCreated() throws Exception {
@@ -325,5 +330,34 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.path").value("/products/" + productId));
 
         verify(updateProductUseCase).execute(eq(productId), any(UpdateProductCommand.class));
+    }
+
+    @Test
+    void shouldDeactivateProductAndReturnNoContent() throws Exception {
+        var productId =  1L;
+
+        mockMvc.perform(delete("/products/{id}", productId))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(deactivateProductUseCase).execute(productId);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenDeactivatingNonexistentProduct() throws Exception {
+        var productId =  100L;
+
+        doThrow(new ProductNotFoundException(productId)).when(deactivateProductUseCase).execute(productId);
+
+        mockMvc.perform(delete("/products/{id}", productId))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Product not found with id: " + productId))
+                .andExpect(jsonPath("$.path").value("/products/" + productId));
+
+        verify(deactivateProductUseCase).execute(productId);
     }
 }
