@@ -22,115 +22,115 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/products")
 public class ProductController {
 
-  private final CreateProductUseCase createProductUseCase;
-  private final GetProductByIdUseCase getProductByIdUseCase;
-  private final ListProductsUseCase listProductsUseCase;
-  private final UpdateProductUseCase updateProductUseCase;
-  private final DeactivateProductUseCase deactivateProductUseCase;
+    private final CreateProductUseCase createProductUseCase;
+    private final GetProductByIdUseCase getProductByIdUseCase;
+    private final ListProductsUseCase listProductsUseCase;
+    private final UpdateProductUseCase updateProductUseCase;
+    private final DeactivateProductUseCase deactivateProductUseCase;
 
-  public ProductController(
-      CreateProductUseCase productUseCase,
-      GetProductByIdUseCase productByIdUseCase,
-      ListProductsUseCase listProductsUseCase,
-      UpdateProductUseCase updateProductUseCase,
-      DeactivateProductUseCase deactivateProductUseCase) {
-    this.createProductUseCase = productUseCase;
-    this.getProductByIdUseCase = productByIdUseCase;
-    this.listProductsUseCase = listProductsUseCase;
-    this.updateProductUseCase = updateProductUseCase;
-    this.deactivateProductUseCase = deactivateProductUseCase;
-  }
+    public ProductController(
+        CreateProductUseCase productUseCase,
+        GetProductByIdUseCase productByIdUseCase,
+        ListProductsUseCase listProductsUseCase,
+        UpdateProductUseCase updateProductUseCase,
+        DeactivateProductUseCase deactivateProductUseCase) {
+        this.createProductUseCase = productUseCase;
+        this.getProductByIdUseCase = productByIdUseCase;
+        this.listProductsUseCase = listProductsUseCase;
+        this.updateProductUseCase = updateProductUseCase;
+        this.deactivateProductUseCase = deactivateProductUseCase;
+    }
 
-  @PostMapping
-  public ResponseEntity<ProductResponse> createProduct(
-      @Valid @RequestBody CreateProductRequest request) {
+    @PostMapping
+    public ResponseEntity<ProductResponse> createProduct(
+        @Valid @RequestBody CreateProductRequest request) {
 
-    CreateProductCommand command =
-        new CreateProductCommand(request.name(), request.description(), request.price());
+        CreateProductCommand command =
+            new CreateProductCommand(request.name(), request.description(), request.price());
 
-    Product product = createProductUseCase.execute(command);
+        Product product = createProductUseCase.execute(command);
 
-    var response =
-        new ProductResponse(
-            product.getId(),
-            product.getName(),
-            product.getDescription(),
-            product.getPrice(),
-            product.isActive());
+        var response =
+            new ProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.isActive());
 
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
-  }
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
-  @GetMapping("/{id}")
-  public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
 
-    var product = getProductByIdUseCase.execute(id);
+        var product = getProductByIdUseCase.execute(id);
 
-    var response =
-        new ProductResponse(
-            product.getId(),
-            product.getName(),
-            product.getDescription(),
-            product.getPrice(),
-            product.isActive());
-    return ResponseEntity.ok(response);
-  }
+        var response =
+            new ProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.isActive());
+        return ResponseEntity.ok(response);
+    }
 
-  @GetMapping
-  public ResponseEntity<PageResponse<ProductResponse>> listProducts(
-      @RequestParam(name = "page", defaultValue = "0") int page,
-      @RequestParam(name = "size", defaultValue = "20") int size) {
+    @GetMapping
+    public ResponseEntity<PageResponse<ProductResponse>> listProducts(
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "size", defaultValue = "20") int size) {
 
-    PageQuery pageQuery = new PageQuery(page, size);
+        PageQuery pageQuery = new PageQuery(page, size);
 
-    var pageResult = listProductsUseCase.execute(pageQuery);
+        var pageResult = listProductsUseCase.execute(pageQuery);
 
-    var responses =
-        pageResult.content().stream()
-            .map(
-                product ->
-                    new ProductResponse(
-                        product.getId(),
-                        product.getName(),
-                        product.getDescription(),
-                        product.getPrice(),
-                        product.isActive()))
-            .toList();
+        var responses =
+            pageResult.content().stream()
+                .map(
+                    product ->
+                        new ProductResponse(
+                            product.getId(),
+                            product.getName(),
+                            product.getDescription(),
+                            product.getPrice(),
+                            product.isActive()))
+                .toList();
 
-    PageResponse<ProductResponse> pageResponse =
-        new PageResponse<>(
-            responses,
-            pageResult.page(),
-            pageResult.size(),
-            pageResult.totalElements(),
-            pageResult.totalPages());
+        PageResponse<ProductResponse> pageResponse =
+            new PageResponse<>(
+                responses,
+                pageResult.page(),
+                pageResult.size(),
+                pageResult.totalElements(),
+                pageResult.totalPages());
 
-    return ResponseEntity.ok(pageResponse);
-  }
+        return ResponseEntity.ok(pageResponse);
+    }
 
-  @PatchMapping("/{id}")
-  public ResponseEntity<ProductResponse> updateProduct(
-      @PathVariable Long id, @Valid @RequestBody UpdateProductRequest request) {
+    @PatchMapping("/{id}")
+    public ResponseEntity<ProductResponse> updateProduct(
+        @PathVariable Long id, @Valid @RequestBody UpdateProductRequest request) {
 
-    var updateProductCommand =
-        new UpdateProductCommand(request.name(), request.description(), request.price());
+        var updateProductCommand =
+            new UpdateProductCommand(request.name(), request.description(), request.price());
 
-    var product = updateProductUseCase.execute(id, updateProductCommand);
+        var product = updateProductUseCase.execute(id, updateProductCommand);
 
-    var response =
-        new ProductResponse(
-            product.getId(),
-            product.getName(),
-            product.getDescription(),
-            product.getPrice(),
-            product.isActive());
+        var response =
+            new ProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.isActive());
 
-    return ResponseEntity.ok(response);
-  }
+        return ResponseEntity.ok(response);
+    }
 
-  @DeleteMapping("/{id}")
-  public ResponseEntity<Void> deactivateProduct(@PathVariable Long id) {
-    deactivateProductUseCase.execute(id);
-    return ResponseEntity.noContent().build();
-  }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivateProduct(@PathVariable Long id) {
+        deactivateProductUseCase.execute(id);
+        return ResponseEntity.noContent().build();
+    }
 }
