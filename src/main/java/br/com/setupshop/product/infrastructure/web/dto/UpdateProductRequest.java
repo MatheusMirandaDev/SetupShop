@@ -13,18 +13,18 @@ public record UpdateProductRequest(
         description = "New product name. Omit to keep the current name.",
         example = "Keyboard AULA F75"
     )
-    @Size(max = 200)
+    @Size(min = 1, max = 200)
     String name,
 
     @Schema(
-        description = "New non-negative product price with at most two decimal places. Omit to keep the current price.",
+        description = "New product description. Omit to keep the current description; send a blank value to remove it.",
         example = "Wireless mechanical keyboard"
     )
     @Size(max = 500)
     String description,
 
     @Schema(
-        description = "New non-negative product price. Omit to keep the current price.",
+        description = "New non-negative product price with at most two decimal places. Omit to keep the current price.",
         example = "300.00"
     )
     @DecimalMin(value = "0.00", inclusive = true)

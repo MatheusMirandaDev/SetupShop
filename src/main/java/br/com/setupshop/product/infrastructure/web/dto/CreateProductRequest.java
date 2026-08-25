@@ -9,10 +9,10 @@ import java.math.BigDecimal;
 public record CreateProductRequest(
     @Schema(
         description = "Product name",
-        example = "keyboard AULA F75"
+        example = "Keyboard AULA F75"
     )
     @NotBlank
-    @Size(max = 200)
+    @Size(min = 1, max = 200)
     String name,
 
     @Schema(
