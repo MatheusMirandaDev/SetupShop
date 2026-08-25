@@ -20,23 +20,23 @@ class UpdateProductUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         UpdateProductUseCase productUseCase = new UpdateProductUseCase(productRepository);
         Product product = new Product(
-                "Exemplo",
-                "Exemplo",
-                new BigDecimal("0.00")
+            "Exemplo",
+            "Exemplo",
+            new BigDecimal("0.00")
         );
 
-        var productId =  1L;
+        var productId = 1L;
 
         UpdateProductCommand updateProductCommand = new UpdateProductCommand(
-                "Teclado AULA F75",
-                "Teclado Mecanico para computador",
-                new BigDecimal("300.00")
+            "Teclado AULA F75",
+            "Teclado Mecanico para computador",
+            new BigDecimal("300.00")
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Product productResult = productUseCase.execute(productId,  updateProductCommand);
+        Product productResult = productUseCase.execute(productId, updateProductCommand);
 
         assertEquals("Teclado AULA F75", productResult.getName());
         assertEquals("Teclado Mecanico para computador", productResult.getDescription());
@@ -52,23 +52,23 @@ class UpdateProductUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         UpdateProductUseCase productUseCase = new UpdateProductUseCase(productRepository);
         Product product = new Product(
-                "Produto original",
-                "Descricao original",
-                new BigDecimal("100.00")
+            "Produto original",
+            "Descricao original",
+            new BigDecimal("100.00")
         );
 
-        var productId =  1L;
+        var productId = 1L;
 
         UpdateProductCommand updateProductCommand = new UpdateProductCommand(
-                null,
-                null,
-                new BigDecimal("300.00")
+            null,
+            null,
+            new BigDecimal("300.00")
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Product productResult = productUseCase.execute(productId,  updateProductCommand);
+        Product productResult = productUseCase.execute(productId, updateProductCommand);
         assertEquals("Produto original", productResult.getName());
         assertEquals("Descricao original", productResult.getDescription());
         assertEquals(new BigDecimal("300.00"), productResult.getPrice());
@@ -82,15 +82,15 @@ class UpdateProductUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         UpdateProductUseCase productUseCase = new UpdateProductUseCase(productRepository);
 
-        var productId =  1L;
+        var productId = 1L;
 
         UpdateProductCommand updateProductCommand = new UpdateProductCommand(
-                null,
-                null,
-                null
+            null,
+            null,
+            null
         );
 
-        assertThrows(IllegalArgumentException.class, () -> productUseCase.execute(productId,  updateProductCommand));
+        assertThrows(IllegalArgumentException.class, () -> productUseCase.execute(productId, updateProductCommand));
         verifyNoInteractions(productRepository);
     }
 
@@ -99,16 +99,16 @@ class UpdateProductUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         UpdateProductUseCase productUseCase = new UpdateProductUseCase(productRepository);
 
-        var productId =  1L;
+        var productId = 1L;
 
         UpdateProductCommand updateProductCommand = new UpdateProductCommand(
-                null,
-                null,
-                new BigDecimal("300.00")
+            null,
+            null,
+            new BigDecimal("300.00")
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
-        assertThrows(ProductNotFoundException.class, () -> productUseCase.execute(productId,  updateProductCommand));
+        assertThrows(ProductNotFoundException.class, () -> productUseCase.execute(productId, updateProductCommand));
 
         verify(productRepository).findById(productId);
         verify(productRepository, never()).save(any(Product.class));
@@ -119,22 +119,49 @@ class UpdateProductUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         UpdateProductUseCase productUseCase = new UpdateProductUseCase(productRepository);
         Product product = new Product(
-                "Produto original",
-                "Descricao original",
-                new BigDecimal("100.00")
+            "Produto original",
+            "Descricao original",
+            new BigDecimal("100.00")
         );
 
-        var productId =  1L;
+        var productId = 1L;
 
         UpdateProductCommand updateProductCommand = new UpdateProductCommand(
-                "   ",
-                null,
-                null
+            "   ",
+            null,
+            null
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        assertThrows(IllegalArgumentException.class, () -> productUseCase.execute(productId,  updateProductCommand));
+        assertThrows(IllegalArgumentException.class, () -> productUseCase.execute(productId, updateProductCommand));
         assertEquals("Produto original", product.getName());
+        verify(productRepository).findById(productId);
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void shouldNotPartiallyModifyProductWhenOneUpdateFieldIsInvalid() {
+        ProductRepository productRepository = mock(ProductRepository.class);
+        UpdateProductUseCase productUseCase = new UpdateProductUseCase(productRepository);
+        Product product = new Product(
+            "Produto original",
+            "Descricao original",
+            new BigDecimal("300.00")
+        );
+
+        var productId = 1L;
+
+        UpdateProductCommand updateProductCommand = new UpdateProductCommand(
+            "Novo nome valido",
+            null,
+            new BigDecimal("-100.00")
+        );
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        assertThrows(IllegalArgumentException.class, () -> productUseCase.execute(productId, updateProductCommand));
+        assertEquals("Produto original", product.getName());
+        assertEquals("Descricao original", product.getDescription());
+        assertEquals(new BigDecimal("300.00"), product.getPrice());
         verify(productRepository).findById(productId);
         verify(productRepository, never()).save(any(Product.class));
     }

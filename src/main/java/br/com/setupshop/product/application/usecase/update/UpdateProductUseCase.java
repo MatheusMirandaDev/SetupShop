@@ -31,9 +31,11 @@ public class UpdateProductUseCase {
 
         Product product = productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
 
-        if (command.name() != null) {product.changeName(command.name());}
-        if (command.description() != null) {product.changeDescription(command.description());}
-        if (command.price() != null) {product.changePrice(command.price());}
+        product.updateDetails(
+            command.name(),
+            command.description(),
+            command.price()
+        );
 
         return productRepository.save(product);
     }

@@ -32,18 +32,18 @@ public class Product {
     private boolean active;
 
     @Column(
-            name = "created_at",
-            nullable = false,
-            insertable = false,
-            updatable = false
+        name = "created_at",
+        nullable = false,
+        insertable = false,
+        updatable = false
     )
     private Instant createdAt;
 
     @Column(
-            name = "updated_at",
-            nullable = false,
-            insertable = false,
-            updatable = false
+        name = "updated_at",
+        nullable = false,
+        insertable = false,
+        updatable = false
     )
     private Instant updatedAt;
 
@@ -73,10 +73,9 @@ public class Product {
     }
 
     private static BigDecimal validateAndNormalizePrice(BigDecimal price) {
-        if (price == null ||  price.compareTo(BigDecimal.ZERO) < 0) {
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Product price cannot be null or negative");
         }
-
         try {
             return price.setScale(2, RoundingMode.UNNECESSARY);
         } catch (ArithmeticException exception) {
@@ -98,6 +97,24 @@ public class Product {
 
     public void deactivate() {
         this.active = false;
+    }
+
+    public void updateDetails(String newName, String newDescription, BigDecimal newPrice) {
+
+        String validatedName =
+            newName == null ? this.name : validateAndNormalizeName(newName);
+
+        String validatedDescription =
+            newDescription == null
+                ? this.description
+                : validateAndNormalizeDescription(newDescription);
+
+        BigDecimal validatedPrice =
+            newPrice == null ? this.price : validateAndNormalizePrice(newPrice);
+
+        this.name = validatedName;
+        this.description = validatedDescription;
+        this.price = validatedPrice;
     }
 
     public Product(String name, String description, BigDecimal price) {
