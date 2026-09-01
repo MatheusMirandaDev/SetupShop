@@ -1,25 +1,49 @@
 package br.com.setupshop.customer.domain.model;
 
+import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.Locale;
 
 @Getter
+@Entity
+@Table(name = "customers")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Customer {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, length = 200)
     private String name;
 
+    @Column(nullable = false, length = 255, unique = true)
     private String email;
 
+    @Column(nullable = false, length = 11)
     private String phone;
 
+    @Column(nullable = false)
     private boolean active;
 
+    @Column(
+        name = "created_at",
+        nullable = false,
+        insertable = false,
+        updatable = false
+    )
     private Instant createdAt;
 
+    @Column(
+        name = "updated_at",
+        nullable = false,
+        insertable = false,
+        updatable = false
+    )
     private Instant updatedAt;
 
     private static String validateAndNormalizeName(String name) {
