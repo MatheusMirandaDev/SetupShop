@@ -12,7 +12,7 @@ public record CreateProductRequest(
         example = "Keyboard AULA F75"
     )
     @NotBlank
-    @Size(min = 1, max = 200)
+    @Size(max = 200)
     String name,
 
     @Schema(
