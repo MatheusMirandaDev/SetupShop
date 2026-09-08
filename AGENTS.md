@@ -23,7 +23,7 @@ OpenAPI/Swagger, JUnit, Mockito, and Testcontainers.
 ## Code and tests
 
 - Use the English names and messages already established by the codebase.
-- Format Java with Palantir Java Format and 4-space indentation.
+- Format Java with the IntelliJ IDEA built-in formatter and 4-space indentation.
 - Format targeted Java files only; never broadly format `src/main`.
 - Prefer constructor injection, records for commands and DTOs, and `BigDecimal`
   for monetary values.

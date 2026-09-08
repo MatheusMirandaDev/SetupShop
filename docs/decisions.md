@@ -89,8 +89,9 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Java formatting
 
-- **Context:** Formatting must be consistent without changing Flyway checksums.
-- **Decision:** Use Palantir Java Format with 4-space indentation and format
-  targeted Java files only.
-- **Consequence:** Java formatting is reproducible, while SQL migrations remain
-  untouched by broad formatting commands.
+- **Context:** Formatting must remain consistent without introducing build
+  dependencies or changing Flyway checksums.
+- **Decision:** Use the IntelliJ IDEA built-in Java formatter with 4-space
+  indentation and format targeted Java files only.
+- **Consequence:** Java formatting does not add dependencies to the build, while
+  SQL migrations remain untouched by broad formatting operations.
