@@ -19,4 +19,5 @@ public record CreateCustomerRequest(
     @Pattern(regexp = "[0-9]{11}")
     String phone
 ) {
+
 }

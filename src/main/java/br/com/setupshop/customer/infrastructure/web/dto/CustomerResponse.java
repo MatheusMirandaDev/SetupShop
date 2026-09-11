@@ -7,4 +7,5 @@ public record CustomerResponse(
     String phone,
     boolean active
 ) {
+
 }

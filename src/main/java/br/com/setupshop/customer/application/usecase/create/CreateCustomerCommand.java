@@ -5,4 +5,5 @@ public record CreateCustomerCommand(
     String email,
     String phone
 ) {
+
 }
