@@ -6,8 +6,6 @@ import br.com.setupshop.product.domain.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Objects;
-
 @Service
 public class UpdateProductUseCase {
 
@@ -17,17 +15,17 @@ public class UpdateProductUseCase {
         this.productRepository = productRepository;
     }
 
-
-
     @Transactional
     public Product execute(Long id, UpdateProductCommand command) {
         boolean noFieldsProvided =
-                command == null ||
+            command == null ||
                 (command.name() == null &&
-                command.description() == null &&
-                command.price() == null);
+                    command.description() == null &&
+                    command.price() == null);
 
-        if (noFieldsProvided) { throw new IllegalArgumentException("At least one field must be provided"); }
+        if (noFieldsProvided) {
+            throw new IllegalArgumentException("At least one field must be provided");
+        }
 
         Product product = productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
 

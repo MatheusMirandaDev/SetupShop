@@ -37,4 +37,5 @@ public record ProductResponse(
     )
     boolean active
 ) {
+
 }

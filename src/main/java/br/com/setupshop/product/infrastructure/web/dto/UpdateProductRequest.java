@@ -30,4 +30,5 @@ public record UpdateProductRequest(
     @DecimalMin(value = "0.00", inclusive = true)
     BigDecimal price
 ) {
+
 }

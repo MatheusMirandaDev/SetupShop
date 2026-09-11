@@ -18,7 +18,7 @@ public class GetProductByIdUseCase {
     @Transactional(readOnly = true)
     public Product execute(Long productId) {
         return productRepository
-                .findById(productId)
-                .orElseThrow( () -> new  ProductNotFoundException(productId)) ;
+            .findById(productId)
+            .orElseThrow(() -> new ProductNotFoundException(productId));
     }
 }

@@ -10,14 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ListProductsUseCase {
 
-  private final ProductRepository productRepository;
+    private final ProductRepository productRepository;
 
-  public ListProductsUseCase(ProductRepository productRepository) {
-    this.productRepository = productRepository;
-  }
+    public ListProductsUseCase(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
 
-  @Transactional(readOnly = true)
-  public PageResult<Product> execute(PageQuery pageQuery) {
-    return productRepository.findAll(pageQuery);
-  }
+    @Transactional(readOnly = true)
+    public PageResult<Product> execute(PageQuery pageQuery) {
+        return productRepository.findAll(pageQuery);
+    }
 }

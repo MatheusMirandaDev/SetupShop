@@ -4,7 +4,11 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProductTest {
 
@@ -247,12 +251,12 @@ class ProductTest {
         String newDescription = "   Teclado Mecanico para computador   ";
         product.changeDescription(newDescription);
 
-        assertEquals("Teclado Mecanico para computador",  product.getDescription());
+        assertEquals("Teclado Mecanico para computador", product.getDescription());
 
     }
 
     @Test
-    void shouldRemoveDescriptionWhenChangingToBlank(){
+    void shouldRemoveDescriptionWhenChangingToBlank() {
         String name = "Teclado AULA F75";
         String description = "Exemplo";
         BigDecimal price = new BigDecimal("300.00");
@@ -265,7 +269,7 @@ class ProductTest {
     }
 
     @Test
-    void shouldChangeAndNormalizeProductPrice(){
+    void shouldChangeAndNormalizeProductPrice() {
         String name = "Exemplo";
         String description = "Exemplo";
         BigDecimal price = new BigDecimal("0");
@@ -278,7 +282,7 @@ class ProductTest {
     }
 
     @Test
-    void shouldRejectInvalidPriceWhenChangingProductPrice(){
+    void shouldRejectInvalidPriceWhenChangingProductPrice() {
         String name = "Exemplo";
         String description = "Exemplo";
         BigDecimal price = new BigDecimal("300");
@@ -290,7 +294,7 @@ class ProductTest {
     }
 
     @Test
-    void shouldDeactivateProduct(){
+    void shouldDeactivateProduct() {
         String name = "Exemplo";
         String description = "Exemplo";
         BigDecimal price = new BigDecimal("300");

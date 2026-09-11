@@ -6,9 +6,15 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class CreateProductUseCaseTest {
 
@@ -18,9 +24,9 @@ class CreateProductUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         CreateProductUseCase productUseCase = new CreateProductUseCase(productRepository);
         CreateProductCommand productCommand = new CreateProductCommand(
-                "Teclado AULA F75",
-                "Teclado Mecanico para computador",
-                new BigDecimal("300.00")
+            "Teclado AULA F75",
+            "Teclado Mecanico para computador",
+            new BigDecimal("300.00")
         );
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -41,9 +47,9 @@ class CreateProductUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         CreateProductUseCase productUseCase = new CreateProductUseCase(productRepository);
         CreateProductCommand productCommand = new CreateProductCommand(
-                null,
-                "Teclado Mecanico para computador",
-                new BigDecimal("300.00")
+            null,
+            "Teclado Mecanico para computador",
+            new BigDecimal("300.00")
         );
 
         // When - Then

@@ -37,4 +37,5 @@ public record ApiErrorResponse(
     )
     String path
 ) {
+
 }

@@ -33,4 +33,5 @@ public record PageResponse<T>(
         example = "3"
     )
     int totalPages) {
+
 }

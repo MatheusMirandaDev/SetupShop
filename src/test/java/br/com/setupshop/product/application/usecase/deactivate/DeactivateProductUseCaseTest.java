@@ -10,7 +10,11 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class DeactivateProductUseCaseTest {
 
@@ -21,9 +25,9 @@ class DeactivateProductUseCaseTest {
         var productId = 1L;
 
         Product product = new Product(
-                "Exemplo",
-                "Exemplo",
-                new BigDecimal("0.00")
+            "Exemplo",
+            "Exemplo",
+            new BigDecimal("0.00")
         );
 
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -35,7 +39,7 @@ class DeactivateProductUseCaseTest {
     }
 
     @Test
-    void shouldThrowProductNotFoundExceptionWhenDeactivatingNonexistentProduct(){
+    void shouldThrowProductNotFoundExceptionWhenDeactivatingNonexistentProduct() {
         ProductRepository productRepository = mock(ProductRepository.class);
         DeactivateProductUseCase deactivateProductUseCase = new DeactivateProductUseCase(productRepository);
         var productId = 1L;

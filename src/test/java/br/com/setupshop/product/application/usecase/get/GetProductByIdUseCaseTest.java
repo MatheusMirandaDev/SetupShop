@@ -1,6 +1,5 @@
 package br.com.setupshop.product.application.usecase.get;
 
-
 import br.com.setupshop.product.domain.exception.ProductNotFoundException;
 import br.com.setupshop.product.domain.model.Product;
 import br.com.setupshop.product.domain.repository.ProductRepository;
@@ -11,7 +10,9 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class GetProductByIdUseCaseTest {
 
@@ -20,9 +21,9 @@ class GetProductByIdUseCaseTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         GetProductByIdUseCase productUseCase = new GetProductByIdUseCase(productRepository);
         Product product = new Product(
-                "Teclado AULA F75",
-                "Teclado Mecanico para computador",
-                new BigDecimal("300.00")
+            "Teclado AULA F75",
+            "Teclado Mecanico para computador",
+            new BigDecimal("300.00")
         );
         Long productId = 1L;
 

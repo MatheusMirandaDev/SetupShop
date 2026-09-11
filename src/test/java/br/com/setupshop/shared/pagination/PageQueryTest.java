@@ -7,26 +7,26 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PageQueryTest {
 
-  @Test
-  void shouldCreatePageQueryWithValidValues() {
-    PageQuery query = new PageQuery(0, 20);
+    @Test
+    void shouldCreatePageQueryWithValidValues() {
+        PageQuery query = new PageQuery(0, 20);
 
-    assertEquals(0, query.page());
-    assertEquals(20, query.size());
-  }
+        assertEquals(0, query.page());
+        assertEquals(20, query.size());
+    }
 
-  @Test
-  void shouldRejectNegativePage() {
-    assertThrows(IllegalArgumentException.class, () -> new PageQuery(-1, 20));
-  }
+    @Test
+    void shouldRejectNegativePage() {
+        assertThrows(IllegalArgumentException.class, () -> new PageQuery(-1, 20));
+    }
 
-  @Test
-  void shouldRejectPageSizeBelowMinimum() {
-    assertThrows(IllegalArgumentException.class, () -> new PageQuery(0, 0));
-  }
+    @Test
+    void shouldRejectPageSizeBelowMinimum() {
+        assertThrows(IllegalArgumentException.class, () -> new PageQuery(0, 0));
+    }
 
-  @Test
-  void shouldRejectPageSizeAboveMaximum() {
-    assertThrows(IllegalArgumentException.class, () -> new PageQuery(0, 101));
-  }
+    @Test
+    void shouldRejectPageSizeAboveMaximum() {
+        assertThrows(IllegalArgumentException.class, () -> new PageQuery(0, 101));
+    }
 }

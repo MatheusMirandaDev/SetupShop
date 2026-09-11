@@ -44,4 +44,5 @@ public record ValidationErrorResponse(
     )
     Map<String, String> fieldErrors
 ) {
+
 }
