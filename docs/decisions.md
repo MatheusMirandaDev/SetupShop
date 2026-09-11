@@ -91,7 +91,8 @@ This document records only technical decisions already adopted by SetupShop.
 
 - **Context:** Formatting must remain consistent without introducing build
   dependencies or changing Flyway checksums.
-- **Decision:** Use the IntelliJ IDEA built-in Java formatter with 4-space
-  indentation and format targeted Java files only.
-- **Consequence:** Java formatting does not add dependencies to the build, while
-  SQL migrations remain untouched by broad formatting operations.
+- **Decision:** Use the IntelliJ IDEA built-in Java formatter with the project
+  `.editorconfig`, 4-space indentation, LF line endings, and targeted formatting
+  only.
+- **Consequence:** Formatting is reproducible without adding build dependencies,
+  while SQL migrations remain untouched by broad formatting operations.
