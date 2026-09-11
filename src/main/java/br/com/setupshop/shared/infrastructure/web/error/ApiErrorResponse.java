@@ -1,4 +1,4 @@
-package br.com.setupshop.product.infrastructure.web.error;
+package br.com.setupshop.shared.infrastructure.web.error;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

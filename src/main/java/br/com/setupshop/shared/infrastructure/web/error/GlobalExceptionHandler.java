@@ -1,6 +1,5 @@
-package br.com.setupshop.product.infrastructure.web.error;
+package br.com.setupshop.shared.infrastructure.web.error;
 
-import br.com.setupshop.product.domain.exception.ProductNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,11 +20,11 @@ public class GlobalExceptionHandler {
         var status = HttpStatus.BAD_REQUEST;
 
         ApiErrorResponse errorResponse = new ApiErrorResponse(
-                Instant.now(),
-                status.value(),
-                status.getReasonPhrase(),
-                exception.getMessage(),
-                request.getRequestURI()
+            Instant.now(),
+            status.value(),
+            status.getReasonPhrase(),
+            exception.getMessage(),
+            request.getRequestURI()
         );
 
         return ResponseEntity.badRequest().body(errorResponse);
@@ -42,30 +41,14 @@ public class GlobalExceptionHandler {
         var status = HttpStatus.BAD_REQUEST;
 
         ValidationErrorResponse errorResponse = new ValidationErrorResponse(
-                Instant.now(),
-                status.value(),
-                status.getReasonPhrase(),
-                "Validation failed",
-                request.getRequestURI(),
-                fieldErrors
+            Instant.now(),
+            status.value(),
+            status.getReasonPhrase(),
+            "Validation failed",
+            request.getRequestURI(),
+            fieldErrors
         );
 
         return ResponseEntity.badRequest().body(errorResponse);
-    }
-
-    @ExceptionHandler(ProductNotFoundException.class)
-    public ResponseEntity<ApiErrorResponse> handleProductNotFoundException(ProductNotFoundException exception, HttpServletRequest request) {
-
-        var status = HttpStatus.NOT_FOUND;
-
-        ApiErrorResponse errorResponse = new ApiErrorResponse(
-                Instant.now(),
-                status.value(),
-                status.getReasonPhrase(),
-                exception.getMessage(),
-                request.getRequestURI()
-        );
-
-        return ResponseEntity.status(status).body(errorResponse);
     }
 }
