@@ -4,6 +4,8 @@ import br.com.setupshop.customer.domain.model.Customer;
 import br.com.setupshop.customer.domain.repository.CustomerRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public class CustomerRepositoryAdapter implements CustomerRepository {
 
@@ -21,5 +23,10 @@ public class CustomerRepositoryAdapter implements CustomerRepository {
     @Override
     public boolean existsByEmail(String email) {
         return customerRepository.existsByEmail(email);
+    }
+
+    @Override
+    public Optional<Customer> findById(Long id) {
+        return customerRepository.findById(id);
     }
 }

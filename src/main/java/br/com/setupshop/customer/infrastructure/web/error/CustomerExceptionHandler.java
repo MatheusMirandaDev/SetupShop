@@ -1,5 +1,6 @@
 package br.com.setupshop.customer.infrastructure.web.error;
 
+import br.com.setupshop.customer.domain.exception.CustomerNotFoundException;
 import br.com.setupshop.customer.domain.exception.EmailAlreadyExistsException;
 import br.com.setupshop.shared.infrastructure.web.error.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,23 @@ public class CustomerExceptionHandler {
         EmailAlreadyExistsException exception, HttpServletRequest request) {
 
         var status = HttpStatus.CONFLICT;
+
+        ApiErrorResponse errorResponse = new ApiErrorResponse(
+            Instant.now(),
+            status.value(),
+            status.getReasonPhrase(),
+            exception.getMessage(),
+            request.getRequestURI()
+        );
+
+        return ResponseEntity.status(status).body(errorResponse);
+    }
+
+    @ExceptionHandler(CustomerNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleCustomerNotFoundException(
+        CustomerNotFoundException exception, HttpServletRequest request) {
+
+        var status = HttpStatus.NOT_FOUND;
 
         ApiErrorResponse errorResponse = new ApiErrorResponse(
             Instant.now(),

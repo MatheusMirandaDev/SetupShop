@@ -2,6 +2,8 @@ package br.com.setupshop.customer.infrastructure.web;
 
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerCommand;
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerUseCase;
+import br.com.setupshop.customer.application.usecase.get.GetCustomerByIdUseCase;
+import br.com.setupshop.customer.domain.exception.CustomerNotFoundException;
 import br.com.setupshop.customer.domain.exception.EmailAlreadyExistsException;
 import br.com.setupshop.customer.domain.model.Customer;
 import org.junit.jupiter.api.Test;
@@ -13,10 +15,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,6 +34,9 @@ class CustomerControllerTest {
 
     @MockitoBean
     private CreateCustomerUseCase createCustomerUseCase;
+
+    @MockitoBean
+    private GetCustomerByIdUseCase getCustomerByIdUseCase;
 
     @Test
     void shouldCreateCustomerAndReturnCreated() throws Exception {
@@ -168,5 +175,55 @@ class CustomerControllerTest {
             .andExpect(jsonPath("$.fieldErrors.phone").value("must match \"[0-9]{11}\""));
 
         verifyNoInteractions(createCustomerUseCase);
+    }
+
+    @Test
+    void shouldReturnCustomerWhenFound() throws Exception {
+        Long customerId = 1L;
+
+        String name = "Matheus Miranda";
+        String email = "matheus.miranda@gmail.com";
+        String phone = "61999999999";
+
+        Customer customer = mock(Customer.class);
+
+        when(getCustomerByIdUseCase.execute(customerId)).thenReturn(customer);
+        when(customer.getId()).thenReturn(customerId);
+        when(customer.getName()).thenReturn(name);
+        when(customer.getEmail()).thenReturn(email);
+        when(customer.getPhone()).thenReturn(phone);
+        when(customer.isActive()).thenReturn(true);
+
+        mockMvc
+            .perform(get("/customers/{id}", customerId))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.id").value(customerId))
+            .andExpect(jsonPath("$.name").value(name))
+            .andExpect(jsonPath("$.email").value(email))
+            .andExpect(jsonPath("$.phone").value(phone))
+            .andExpect(jsonPath("$.active").value(true));
+
+        verify(getCustomerByIdUseCase).execute(customerId);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenCustomerDoesNotExist() throws Exception {
+        Long customerId = 1000L;
+
+        when(getCustomerByIdUseCase.execute(customerId))
+            .thenThrow(new CustomerNotFoundException(customerId));
+
+        mockMvc
+            .perform(get("/customers/{id}", customerId))
+            .andExpect(status().isNotFound())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Customer not found with id: " + customerId))
+            .andExpect(jsonPath("$.path").value("/customers/" + customerId));
+
+        verify(getCustomerByIdUseCase).execute(customerId);
     }
 }

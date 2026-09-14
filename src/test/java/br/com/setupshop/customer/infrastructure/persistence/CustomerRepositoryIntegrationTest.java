@@ -13,6 +13,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -100,5 +102,27 @@ class CustomerRepositoryIntegrationTest {
             customerRepository.save(customer2);
             entityManager.flush();
         });
+    }
+
+    @Test
+    void shouldFindCustomerById() {
+        Customer customer = new Customer(
+            "Matheus",
+            "matheus.miranda@gmail.com",
+            "61888888888"
+        );
+
+        Customer savedCustomer = customerRepository.save(customer);
+        entityManager.flush();
+        entityManager.clear();
+
+        Optional<Customer> customerResult = customerRepository.findById(savedCustomer.getId());
+        assertTrue(customerResult.isPresent());
+
+        Customer foundCustomer = customerResult.get();
+        assertEquals(savedCustomer.getId(), foundCustomer.getId());
+        assertEquals(savedCustomer.getName(), foundCustomer.getName());
+        assertEquals(savedCustomer.getEmail(), foundCustomer.getEmail());
+        assertEquals(savedCustomer.getPhone(), foundCustomer.getPhone());
     }
 }
