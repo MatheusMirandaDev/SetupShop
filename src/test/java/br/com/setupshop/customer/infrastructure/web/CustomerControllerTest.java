@@ -3,15 +3,20 @@ package br.com.setupshop.customer.infrastructure.web;
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerCommand;
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerUseCase;
 import br.com.setupshop.customer.application.usecase.get.GetCustomerByIdUseCase;
+import br.com.setupshop.customer.application.usecase.list.ListCustomersUseCase;
 import br.com.setupshop.customer.domain.exception.CustomerNotFoundException;
 import br.com.setupshop.customer.domain.exception.EmailAlreadyExistsException;
 import br.com.setupshop.customer.domain.model.Customer;
+import br.com.setupshop.shared.pagination.PageQuery;
+import br.com.setupshop.shared.pagination.PageResult;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +42,9 @@ class CustomerControllerTest {
 
     @MockitoBean
     private GetCustomerByIdUseCase getCustomerByIdUseCase;
+
+    @MockitoBean
+    private ListCustomersUseCase listCustomersUseCase;
 
     @Test
     void shouldCreateCustomerAndReturnCreated() throws Exception {
@@ -225,5 +233,147 @@ class CustomerControllerTest {
             .andExpect(jsonPath("$.path").value("/customers/" + customerId));
 
         verify(getCustomerByIdUseCase).execute(customerId);
+    }
+
+    @Test
+    void shouldReturnPaginatedCustomers() throws Exception {
+        String name1 = "Matheus";
+        String email1 = "matheus.miranda@gmail.com";
+        String phone1 = "61888888888";
+
+        Customer customer1 = mock(Customer.class);
+        when(customer1.getId()).thenReturn(1L);
+        when(customer1.getName()).thenReturn(name1);
+        when(customer1.getEmail()).thenReturn(email1);
+        when(customer1.getPhone()).thenReturn(phone1);
+        when(customer1.isActive()).thenReturn(true);
+
+        String name2 = "Miranda";
+        String email2 = "miranda.batista@gmail.com";
+        String phone2 = "61999999999";
+
+        Customer customer2 = mock(Customer.class);
+        when(customer2.getId()).thenReturn(2L);
+        when(customer2.getName()).thenReturn(name2);
+        when(customer2.getEmail()).thenReturn(email2);
+        when(customer2.getPhone()).thenReturn(phone2);
+        when(customer2.isActive()).thenReturn(true);
+
+        PageQuery pageQuery = new PageQuery(0, 20);
+        PageResult<Customer> pageResult = new PageResult<>(
+            List.of(customer1, customer2), 0, 20, 2, 1);
+
+        when(listCustomersUseCase.execute(pageQuery)).thenReturn(pageResult);
+
+        mockMvc
+            .perform(get("/customers")
+                .param("page", "0")
+                .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].name").value(name1))
+            .andExpect(jsonPath("$.content[0].email").value(email1))
+            .andExpect(jsonPath("$.content[0].phone").value(phone1))
+            .andExpect(jsonPath("$.content[0].active").value(true))
+            .andExpect(jsonPath("$.content[1].id").value(2L))
+            .andExpect(jsonPath("$.content[1].name").value(name2))
+            .andExpect(jsonPath("$.content[1].email").value(email2))
+            .andExpect(jsonPath("$.content[1].phone").value(phone2))
+            .andExpect(jsonPath("$.content[1].active").value(true))
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.totalPages").value(1));
+
+        verify(listCustomersUseCase).execute(pageQuery);
+    }
+
+    @Test
+    void shouldUseDefaultPaginationWhenParametersAreNotProvided() throws Exception {
+        String name1 = "Matheus";
+        String email1 = "matheus.miranda@gmail.com";
+        String phone1 = "61888888888";
+
+        Customer customer1 = mock(Customer.class);
+        when(customer1.getId()).thenReturn(1L);
+        when(customer1.getName()).thenReturn(name1);
+        when(customer1.getEmail()).thenReturn(email1);
+        when(customer1.getPhone()).thenReturn(phone1);
+        when(customer1.isActive()).thenReturn(true);
+
+        String name2 = "Miranda";
+        String email2 = "miranda.batista@gmail.com";
+        String phone2 = "61999999999";
+
+        Customer customer2 = mock(Customer.class);
+        when(customer2.getId()).thenReturn(2L);
+        when(customer2.getName()).thenReturn(name2);
+        when(customer2.getEmail()).thenReturn(email2);
+        when(customer2.getPhone()).thenReturn(phone2);
+        when(customer2.isActive()).thenReturn(true);
+
+        PageQuery pageQuery = new PageQuery(0, 20);
+        PageResult<Customer> pageResult = new PageResult<>(
+            List.of(customer1, customer2), 0, 20, 2, 1);
+
+        when(listCustomersUseCase.execute(pageQuery)).thenReturn(pageResult);
+
+        mockMvc
+            .perform(get("/customers"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].name").value(name1))
+            .andExpect(jsonPath("$.content[0].email").value(email1))
+            .andExpect(jsonPath("$.content[0].phone").value(phone1))
+            .andExpect(jsonPath("$.content[0].active").value(true))
+            .andExpect(jsonPath("$.content[1].id").value(2L))
+            .andExpect(jsonPath("$.content[1].name").value(name2))
+            .andExpect(jsonPath("$.content[1].email").value(email2))
+            .andExpect(jsonPath("$.content[1].phone").value(phone2))
+            .andExpect(jsonPath("$.content[1].active").value(true))
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.totalPages").value(1));
+
+        verify(listCustomersUseCase).execute(pageQuery);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenPageIsNegative() throws Exception {
+        mockMvc
+            .perform(get("/customers")
+                .param("page", "-1")
+                .param("size", "20"))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Page number cannot be negative"))
+            .andExpect(jsonPath("$.path").value("/customers"));
+
+        verifyNoInteractions(listCustomersUseCase);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenPageSizeIsInvalid() throws Exception {
+        mockMvc
+            .perform(get("/customers")
+                .param("page", "0")
+                .param("size", "101"))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Page size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/customers"));
+
+        verifyNoInteractions(listCustomersUseCase);
     }
 }

@@ -1,4 +1,4 @@
-package br.com.setupshop.product.infrastructure.web.dto;
+package br.com.setupshop.shared.infrastructure.web.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
