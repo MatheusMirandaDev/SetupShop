@@ -98,11 +98,25 @@ public class Customer {
         return phone;
     }
 
+    public void updateDetails(String newName, String newEmail, String newPhone) {
+        String validatedName =
+            newName == null ? this.name : validateAndNormalizeName(newName);
+
+        String validatedEmail =
+            newEmail == null ? this.email : validateAndNormalizeEmail(newEmail);
+
+        String validatedPhone =
+            newPhone == null ? this.phone : validatePhone(newPhone);
+
+        this.name = validatedName;
+        this.email = validatedEmail;
+        this.phone = validatedPhone;
+    }
+
     public Customer(String name, String email, String phone) {
         this.name = validateAndNormalizeName(name);
         this.email = validateAndNormalizeEmail(email);
         this.phone = validatePhone(phone);
         this.active = true;
-
     }
 }

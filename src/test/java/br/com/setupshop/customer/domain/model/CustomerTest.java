@@ -192,4 +192,61 @@ class CustomerTest {
         );
     }
 
+    @Test
+    void shouldUpdateCustomerDetails() {
+        String name = "Matheus Miranda";
+        String email = "matheus.miranda@gmail.com";
+        String phone = "61999999999";
+        Customer customer = new Customer(name, email, phone);
+
+        String newName = "   Roberto Batista   ";
+        String newEmail = "ROBERTO.batista@gmail.com   ";
+        String newPhone = "11888888888";
+
+        customer.updateDetails(newName, newEmail, newPhone);
+
+        assertEquals("Roberto Batista", customer.getName());
+        assertEquals("roberto.batista@gmail.com", customer.getEmail());
+        assertEquals(newPhone, customer.getPhone());
+        assertTrue(customer.isActive());
+    }
+
+    @Test
+    void shouldNotPartiallyUpdateCustomerWhenAnyNewValueIsInvalid() {
+        String name = "Matheus Miranda";
+        String email = "matheus.miranda@gmail.com";
+        String phone = "61999999999";
+        Customer customer = new Customer(name, email, phone);
+
+        String newName = "Roberto Batista";
+        String newEmail = "roberto.batista@gmail.com   ";
+        String newPhone = "11111";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> customer.updateDetails(newName, newEmail, newPhone)
+        );
+
+        assertEquals(name, customer.getName());
+        assertEquals(email, customer.getEmail());
+        assertEquals(phone, customer.getPhone());
+        assertTrue(customer.isActive());
+    }
+
+    @Test
+    void shouldUpdateOnlyProvidedCustomerDetails() {
+        String name = "Matheus Miranda";
+        String email = "matheus.miranda@gmail.com";
+        String phone = "61999999999";
+        Customer customer = new Customer(name, email, phone);
+
+        String newName = "Roberto Batista";
+
+        customer.updateDetails(newName, null, null);
+
+        assertEquals(newName, customer.getName());
+        assertEquals(email, customer.getEmail());
+        assertEquals(phone, customer.getPhone());
+        assertTrue(customer.isActive());
+    }
 }
