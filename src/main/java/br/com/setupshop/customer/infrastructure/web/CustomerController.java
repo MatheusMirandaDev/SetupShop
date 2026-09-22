@@ -4,15 +4,19 @@ import br.com.setupshop.customer.application.usecase.create.CreateCustomerComman
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerUseCase;
 import br.com.setupshop.customer.application.usecase.get.GetCustomerByIdUseCase;
 import br.com.setupshop.customer.application.usecase.list.ListCustomersUseCase;
+import br.com.setupshop.customer.application.usecase.update.UpdateCustomerCommand;
+import br.com.setupshop.customer.application.usecase.update.UpdateCustomerUseCase;
 import br.com.setupshop.customer.domain.model.Customer;
 import br.com.setupshop.customer.infrastructure.web.dto.CreateCustomerRequest;
 import br.com.setupshop.customer.infrastructure.web.dto.CustomerResponse;
+import br.com.setupshop.customer.infrastructure.web.dto.UpdateCustomerRequest;
 import br.com.setupshop.shared.infrastructure.web.dto.PageResponse;
 import br.com.setupshop.shared.pagination.PageQuery;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,14 +31,17 @@ public class CustomerController {
     private final CreateCustomerUseCase createCustomerUseCase;
     private final GetCustomerByIdUseCase getCustomerByIdUseCase;
     private final ListCustomersUseCase listCustomersUseCase;
+    private final UpdateCustomerUseCase updateCustomerUseCase;
 
     public CustomerController(
         CreateCustomerUseCase createCustomerUseCase,
         GetCustomerByIdUseCase getCustomerByIdUseCase,
-        ListCustomersUseCase listCustomersUseCase) {
+        ListCustomersUseCase listCustomersUseCase,
+        UpdateCustomerUseCase updateCustomerUseCase) {
         this.createCustomerUseCase = createCustomerUseCase;
         this.getCustomerByIdUseCase = getCustomerByIdUseCase;
         this.listCustomersUseCase = listCustomersUseCase;
+        this.updateCustomerUseCase = updateCustomerUseCase;
     }
 
     @PostMapping
@@ -104,5 +111,31 @@ public class CustomerController {
             );
 
         return ResponseEntity.ok(pageResponse);
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<CustomerResponse> updateCustomer(
+        @PathVariable Long id,
+        @Valid @RequestBody UpdateCustomerRequest request) {
+
+        UpdateCustomerCommand customerCommand =
+            new UpdateCustomerCommand(
+                request.name(),
+                request.email(),
+                request.phone()
+            );
+
+        var updatedCustomer = updateCustomerUseCase.execute(id, customerCommand);
+
+        CustomerResponse customerResponse =
+            new CustomerResponse(
+                updatedCustomer.getId(),
+                updatedCustomer.getName(),
+                updatedCustomer.getEmail(),
+                updatedCustomer.getPhone(),
+                updatedCustomer.isActive()
+            );
+
+        return ResponseEntity.ok(customerResponse);
     }
 }

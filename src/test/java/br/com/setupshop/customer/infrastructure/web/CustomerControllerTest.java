@@ -4,6 +4,8 @@ import br.com.setupshop.customer.application.usecase.create.CreateCustomerComman
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerUseCase;
 import br.com.setupshop.customer.application.usecase.get.GetCustomerByIdUseCase;
 import br.com.setupshop.customer.application.usecase.list.ListCustomersUseCase;
+import br.com.setupshop.customer.application.usecase.update.UpdateCustomerCommand;
+import br.com.setupshop.customer.application.usecase.update.UpdateCustomerUseCase;
 import br.com.setupshop.customer.domain.exception.CustomerNotFoundException;
 import br.com.setupshop.customer.domain.exception.EmailAlreadyExistsException;
 import br.com.setupshop.customer.domain.model.Customer;
@@ -20,12 +22,14 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -45,6 +49,9 @@ class CustomerControllerTest {
 
     @MockitoBean
     private ListCustomersUseCase listCustomersUseCase;
+
+    @MockitoBean
+    private UpdateCustomerUseCase updateCustomerUseCase;
 
     @Test
     void shouldCreateCustomerAndReturnCreated() throws Exception {
@@ -375,5 +382,171 @@ class CustomerControllerTest {
             .andExpect(jsonPath("$.path").value("/customers"));
 
         verifyNoInteractions(listCustomersUseCase);
+    }
+
+    @Test
+    void shouldUpdateCustomerAndReturnOk() throws Exception {
+        Long customerId = 1L;
+        String newName = "Matheus Miranda";
+        String newEmail = "matheus.miranda@gmail.com";
+        String newPhone = "61999999999";
+
+        Customer updatedCustomer = mock(Customer.class);
+
+        when(updatedCustomer.getId()).thenReturn(customerId);
+        when(updatedCustomer.getName()).thenReturn(newName);
+        when(updatedCustomer.getEmail()).thenReturn(newEmail);
+        when(updatedCustomer.getPhone()).thenReturn(newPhone);
+        when(updatedCustomer.isActive()).thenReturn(true);
+        when(updateCustomerUseCase.execute(eq(customerId), any(UpdateCustomerCommand.class)))
+            .thenReturn(updatedCustomer);
+
+        String requestBody =
+            """
+                {
+                  "name": "%s",
+                  "email": "%s",
+                  "phone": "%s"
+                }
+                """
+                .formatted(newName, newEmail, newPhone);
+
+        mockMvc
+            .perform(patch("/customers/{id}", customerId)
+                .contentType(APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.id").value(customerId))
+            .andExpect(jsonPath("$.name").value(newName))
+            .andExpect(jsonPath("$.email").value(newEmail))
+            .andExpect(jsonPath("$.phone").value(newPhone))
+            .andExpect(jsonPath("$.active").value(true));
+
+        ArgumentCaptor<UpdateCustomerCommand> customerArgumentCaptor =
+            ArgumentCaptor.forClass(UpdateCustomerCommand.class);
+
+        verify(updateCustomerUseCase).execute(eq(customerId), customerArgumentCaptor.capture());
+
+        var capturedCommand = customerArgumentCaptor.getValue();
+
+        assertEquals(newName, capturedCommand.name());
+        assertEquals(newEmail, capturedCommand.email());
+        assertEquals(newPhone, capturedCommand.phone());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenUpdateRequestIsInvalid() throws Exception {
+        Long customerId = 1L;
+        String requestBody =
+            """
+                {
+                  "phone": "9999"
+                }
+                """;
+
+        mockMvc
+            .perform(patch("/customers/{id}", customerId)
+                .contentType(APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Validation failed"))
+            .andExpect(jsonPath("$.path").value("/customers/" + customerId))
+            .andExpect(jsonPath("$.fieldErrors.phone")
+                .value("must match \"[0-9]{11}\""));
+
+        verifyNoInteractions(updateCustomerUseCase);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenNoUpdateFieldsAreProvided() throws Exception {
+        Long customerId = 1L;
+        String requestBody = "{}";
+
+        when(updateCustomerUseCase.execute(eq(customerId), any(UpdateCustomerCommand.class)))
+            .thenThrow(new IllegalArgumentException("At least one field must be provided"));
+
+        mockMvc
+            .perform(patch("/customers/{id}", customerId)
+                .contentType(APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("At least one field must be provided"))
+            .andExpect(jsonPath("$.path").value("/customers/" + customerId));
+
+        verify(updateCustomerUseCase).execute(eq(customerId), any(UpdateCustomerCommand.class));
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingCustomerDoesNotExist() throws Exception {
+        Long customerId = 1L;
+        String requestBody =
+            """
+                {
+                  "name": "Matheus Miranda",
+                  "email": "matheus.miranda@gmail.com",
+                  "phone": "61999999999"
+                }
+                """;
+
+        when(updateCustomerUseCase.execute(eq(customerId), any(UpdateCustomerCommand.class)))
+            .thenThrow(new CustomerNotFoundException(customerId));
+
+        mockMvc
+            .perform(patch("/customers/{id}", customerId)
+                .contentType(APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isNotFound())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Customer not found with id: " + customerId))
+            .andExpect(jsonPath("$.path").value("/customers/" + customerId));
+
+        verify(updateCustomerUseCase).execute(eq(customerId), any(UpdateCustomerCommand.class));
+    }
+
+    @Test
+    void shouldReturnConflictWhenUpdatingToExistingEmail() throws Exception {
+        Long customerId = 1L;
+        String name = "Matheus Miranda";
+        String existingEmail = "existing.email@gmail.com";
+        String phone = "61999999999";
+
+        String requestBody =
+            """
+                {
+                  "name": "%s",
+                  "email": "%s",
+                  "phone": "%s"
+                }
+                """
+                .formatted(name, existingEmail, phone);
+
+        when(updateCustomerUseCase.execute(eq(customerId), any(UpdateCustomerCommand.class)))
+            .thenThrow(new EmailAlreadyExistsException(existingEmail));
+
+        mockMvc
+            .perform(patch("/customers/{id}", customerId)
+                .contentType(APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isConflict())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.error").value("Conflict"))
+            .andExpect(jsonPath("$.message").value("Customer email already exists: " + existingEmail))
+            .andExpect(jsonPath("$.path").value("/customers/" + customerId));
+
+        verify(updateCustomerUseCase).execute(eq(customerId), any(UpdateCustomerCommand.class));
     }
 }
