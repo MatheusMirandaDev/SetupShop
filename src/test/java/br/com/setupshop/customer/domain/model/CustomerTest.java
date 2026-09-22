@@ -3,6 +3,7 @@ package br.com.setupshop.customer.domain.model;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -248,5 +249,19 @@ class CustomerTest {
         assertEquals(email, customer.getEmail());
         assertEquals(phone, customer.getPhone());
         assertTrue(customer.isActive());
+    }
+
+    @Test
+    void shouldDeactivateCustomer() {
+        String name = "Matheus Miranda";
+        String email = "matheus.miranda@gmail.com";
+        String phone = "61999999999";
+        Customer customer = new Customer(name, email, phone);
+
+        assertTrue(customer.isActive());
+
+        customer.deactivate();
+
+        assertFalse(customer.isActive());
     }
 }

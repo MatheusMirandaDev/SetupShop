@@ -113,10 +113,15 @@ public class Customer {
         this.phone = validatedPhone;
     }
 
+    public void deactivate() {
+        this.active = false;
+    }
+
     public Customer(String name, String email, String phone) {
         this.name = validateAndNormalizeName(name);
         this.email = validateAndNormalizeEmail(email);
         this.phone = validatePhone(phone);
         this.active = true;
     }
+
 }
