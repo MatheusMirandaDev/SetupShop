@@ -169,4 +169,23 @@ class CustomerRepositoryIntegrationTest {
                 .anyMatch(customer -> customer.getId().equals(savedCustomer3.getId()))
         );
     }
+
+    @Test
+    void shouldPersistCustomerDeactivation() {
+        Customer customer = new Customer(
+            "Matheus",
+            "matheus.miranda@gmail.com",
+            "61888888888"
+        );
+
+        Customer savedCustomer = customerRepository.save(customer);
+        savedCustomer.deactivate();
+        customerRepository.save(savedCustomer);
+        entityManager.flush();
+        entityManager.clear();
+
+        Customer reloadedCustomer = customerRepository.findById(savedCustomer.getId()).orElseThrow();;
+
+        assertFalse(reloadedCustomer.isActive());
+    }
 }
