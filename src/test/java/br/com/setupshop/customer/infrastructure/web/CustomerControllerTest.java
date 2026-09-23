@@ -2,6 +2,7 @@ package br.com.setupshop.customer.infrastructure.web;
 
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerCommand;
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerUseCase;
+import br.com.setupshop.customer.application.usecase.deactivate.DeactivateCustomerUseCase;
 import br.com.setupshop.customer.application.usecase.get.GetCustomerByIdUseCase;
 import br.com.setupshop.customer.application.usecase.list.ListCustomersUseCase;
 import br.com.setupshop.customer.application.usecase.update.UpdateCustomerCommand;
@@ -21,13 +22,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -52,6 +56,9 @@ class CustomerControllerTest {
 
     @MockitoBean
     private UpdateCustomerUseCase updateCustomerUseCase;
+
+    @MockitoBean
+    private DeactivateCustomerUseCase deactivateCustomerUseCase;
 
     @Test
     void shouldCreateCustomerAndReturnCreated() throws Exception {
@@ -548,5 +555,36 @@ class CustomerControllerTest {
             .andExpect(jsonPath("$.path").value("/customers/" + customerId));
 
         verify(updateCustomerUseCase).execute(eq(customerId), any(UpdateCustomerCommand.class));
+    }
+
+    @Test
+    void shouldDeactivateCustomerAndReturnNoContent() throws Exception {
+        Long customerId = 1L;
+
+        mockMvc
+            .perform(delete("/customers/{id}", customerId))
+            .andExpect(status().isNoContent())
+            .andExpect(content().string(""));
+
+        verify(deactivateCustomerUseCase).execute(customerId);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenDeactivatingNonexistentCustomer() throws Exception {
+        Long customerId = 1L;
+
+        doThrow(new CustomerNotFoundException(customerId)).when(deactivateCustomerUseCase).execute(customerId);
+
+        mockMvc
+            .perform(delete("/customers/{id}", customerId))
+            .andExpect(status().isNotFound())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Customer not found with id: " + customerId))
+            .andExpect(jsonPath("$.path").value("/customers/" + customerId));
+
+        verify(deactivateCustomerUseCase).execute(customerId);
     }
 }

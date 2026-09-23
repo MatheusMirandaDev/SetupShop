@@ -2,6 +2,7 @@ package br.com.setupshop.customer.infrastructure.web;
 
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerCommand;
 import br.com.setupshop.customer.application.usecase.create.CreateCustomerUseCase;
+import br.com.setupshop.customer.application.usecase.deactivate.DeactivateCustomerUseCase;
 import br.com.setupshop.customer.application.usecase.get.GetCustomerByIdUseCase;
 import br.com.setupshop.customer.application.usecase.list.ListCustomersUseCase;
 import br.com.setupshop.customer.application.usecase.update.UpdateCustomerCommand;
@@ -15,6 +16,7 @@ import br.com.setupshop.shared.pagination.PageQuery;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,16 +34,19 @@ public class CustomerController {
     private final GetCustomerByIdUseCase getCustomerByIdUseCase;
     private final ListCustomersUseCase listCustomersUseCase;
     private final UpdateCustomerUseCase updateCustomerUseCase;
+    private final DeactivateCustomerUseCase deactivateCustomerUseCase;
 
     public CustomerController(
         CreateCustomerUseCase createCustomerUseCase,
         GetCustomerByIdUseCase getCustomerByIdUseCase,
         ListCustomersUseCase listCustomersUseCase,
-        UpdateCustomerUseCase updateCustomerUseCase) {
+        UpdateCustomerUseCase updateCustomerUseCase,
+        DeactivateCustomerUseCase deactivateCustomerUseCase) {
         this.createCustomerUseCase = createCustomerUseCase;
         this.getCustomerByIdUseCase = getCustomerByIdUseCase;
         this.listCustomersUseCase = listCustomersUseCase;
         this.updateCustomerUseCase = updateCustomerUseCase;
+        this.deactivateCustomerUseCase = deactivateCustomerUseCase;
     }
 
     @PostMapping
@@ -137,5 +142,12 @@ public class CustomerController {
             );
 
         return ResponseEntity.ok(customerResponse);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<CustomerResponse> DeleteCustomer(@PathVariable Long id) {
+
+        deactivateCustomerUseCase.execute(id);
+        return ResponseEntity.noContent().build();
     }
 }
