@@ -85,6 +85,10 @@ public class Customer {
         return normalizedEmail;
     }
 
+    public String normalizeEmailCandidate(String newEmail) {
+        return newEmail == null ? this.email : validateAndNormalizeEmail(newEmail);
+    }
+
     private static String validatePhone(String phone) {
         if (phone == null || phone.isBlank()) {
             throw new IllegalArgumentException("Customer phone cannot be null or blank");

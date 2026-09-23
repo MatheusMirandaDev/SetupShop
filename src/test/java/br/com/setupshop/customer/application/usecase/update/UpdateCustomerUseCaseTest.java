@@ -126,6 +126,9 @@ class UpdateCustomerUseCaseTest {
             () -> updateCustomerUseCase.execute(customerId, updateCustomerCommand)
         );
 
+        assertEquals(name, customer.getName());
+        assertEquals(email, customer.getEmail());
+        assertEquals(phone, customer.getPhone());
         assertEquals("Customer email already exists: " + normalizedEmail, exception.getMessage());
         verify(customerRepository).findById(customerId);
         verify(customerRepository).existsByEmail(normalizedEmail);

@@ -194,6 +194,20 @@ class CustomerTest {
     }
 
     @Test
+    void shouldNormalizeEmailCandidateWithoutChangingCustomer() {
+        String name = "Matheus Miranda";
+        String email = "matheus@gmail.com";
+        String phone = "61999999999";
+        Customer customer = new Customer(name, email, phone);
+
+        String newEmail = "   MATHEUS.MIRANDA@GMAIL.COM";
+        String normalizedEmail = customer.normalizeEmailCandidate(newEmail);
+
+        assertEquals("matheus.miranda@gmail.com", normalizedEmail);
+        assertEquals(email, customer.getEmail());
+    }
+
+    @Test
     void shouldUpdateCustomerDetails() {
         String name = "Matheus Miranda";
         String email = "matheus.miranda@gmail.com";

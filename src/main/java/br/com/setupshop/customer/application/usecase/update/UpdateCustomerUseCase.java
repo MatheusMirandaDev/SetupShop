@@ -32,18 +32,19 @@ public class UpdateCustomerUseCase {
         Customer customer = customerRepository.findById(customerId)
             .orElseThrow(() -> new CustomerNotFoundException(customerId));
 
-        String currentEmail = customer.getEmail();
-        customer.updateDetails(command.name(), command.email(), command.phone());
-
-        boolean emailChanged = !currentEmail.equals(customer.getEmail());
+        String emailCandidate = customer.normalizeEmailCandidate(command.email());
+        boolean emailChanged = !customer.getEmail().equals(emailCandidate);
 
         if (emailChanged) {
-            boolean emailAlreadyExists = customerRepository.existsByEmail(customer.getEmail());
+            boolean emailAlreadyExists = customerRepository.existsByEmail(emailCandidate);
 
             if (emailAlreadyExists) {
-                throw new EmailAlreadyExistsException(customer.getEmail());
+                throw new EmailAlreadyExistsException(emailCandidate);
             }
         }
+
+        customer.updateDetails(command.name(), command.email(), command.phone());
+
         return customerRepository.save(customer);
     }
 }
