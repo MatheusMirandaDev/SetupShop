@@ -29,13 +29,14 @@ This document records only technical decisions already adopted by SetupShop.
 - **Consequence:** Validation is layered, while overlapping constraints with
   duplicate responsibilities are avoided.
 
-## Atomic product updates
+## Atomic partial updates
 
 - **Context:** A partial update containing one valid and one invalid field must
   not leave the entity partially modified.
 - **Decision:** Validate all candidate values before assigning any updated
-  product field.
-- **Consequence:** Failed updates preserve the complete previous product state
+  Product or Customer field. Validate Customer email uniqueness before changing
+  the entity.
+- **Consequence:** Failed updates preserve the complete previous entity state
   and are not saved.
 
 ## Logical product deactivation
@@ -47,6 +48,15 @@ This document records only technical decisions already adopted by SetupShop.
 - **Consequence:** Inactive products remain queryable but are unavailable for
   new purchases.
 
+## Logical customer deactivation
+
+- **Context:** Customer records must remain available for consultation and
+  future business history even when the customer is no longer active.
+- **Decision:** `DELETE /customers/{id}` sets `active` to `false` instead of
+  physically deleting the customer.
+- **Consequence:** Inactive customers remain queryable while their records are
+  preserved.
+
 ## Framework-independent pagination
 
 - **Context:** Pagination belongs to the application contract, while
@@ -54,8 +64,8 @@ This document records only technical decisions already adopted by SetupShop.
 - **Decision:** Use `PageQuery` and `PageResult<T>` outside Spring, converting
   them in the persistence adapter and exposing `PageResponse<T>` over HTTP.
 - **Consequence:** Application and domain contracts do not depend on Spring
-  Data. Pages are zero-based, size is limited to 1–100, and products are sorted
-  by ascending ID.
+  Data. Pages are zero-based, size is limited to 1–100, and Product and Customer
+  listings are sorted by ascending ID.
 
 ## Database evolution and timestamps
 

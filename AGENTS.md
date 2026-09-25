@@ -71,9 +71,10 @@ Docker must be running for persistence integration tests.
 - Product supports creation, lookup by ID, paginated listing, partial update,
   and logical deactivation. Inactive products remain consultable but are not
   available for new purchases.
-- Customer is a business entity, separate from any future login account. Its
-  current rules include required normalized name and email, unique lowercase
-  email, and a required unformatted 11-digit phone.
+- Customer is a business entity, separate from any future login account. It
+  supports creation, lookup by ID, paginated listing, atomic partial update,
+  and logical deactivation. Its current rules include required normalized name
+  and email, unique lowercase email, and a required unformatted 11-digit phone.
 - Continue as a modular monolith and deliver changes in small vertical slices.
 - Orders, inventory workflows, authentication, payments, messaging, cloud
   deployment, and microservices remain deferred until required by their slice.
