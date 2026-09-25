@@ -145,7 +145,7 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<CustomerResponse> deactivateCustomer(@PathVariable Long id) {
+    public ResponseEntity<Void> deactivateCustomer(@PathVariable Long id) {
 
         deactivateCustomerUseCase.execute(id);
         return ResponseEntity.noContent().build();
