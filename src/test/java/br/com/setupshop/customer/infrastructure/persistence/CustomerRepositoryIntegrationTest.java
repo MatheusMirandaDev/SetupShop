@@ -171,6 +171,41 @@ class CustomerRepositoryIntegrationTest {
     }
 
     @Test
+    void shouldPersistCustomerDetailsUpdate() {
+        Customer customer = new Customer(
+            "Matheus",
+            "matheus.miranda@gmail.com",
+            "61999999999"
+        );
+
+        Customer savedCustomer = customerRepository.save(customer);
+        entityManager.flush();
+        entityManager.clear();
+        Customer reloadedCustomer = customerRepository
+            .findById(savedCustomer.getId())
+            .orElseThrow();
+
+        String newName = "Miranda";
+        String newEmail = "miranda.matheus@gmail.com";
+        String newPhone = "61888888888";
+        reloadedCustomer.updateDetails(newName, newEmail, newPhone);
+
+        customerRepository.save(reloadedCustomer);
+        entityManager.flush();
+        entityManager.clear();
+        reloadedCustomer = customerRepository
+            .findById(savedCustomer.getId())
+            .orElseThrow();
+
+        assertEquals(savedCustomer.getId(), reloadedCustomer.getId());
+        assertEquals(newName, reloadedCustomer.getName());
+        assertEquals(newEmail, reloadedCustomer.getEmail());
+        assertEquals(newPhone, reloadedCustomer.getPhone());
+        assertTrue(reloadedCustomer.isActive());
+
+    }
+
+    @Test
     void shouldPersistCustomerDeactivation() {
         Customer customer = new Customer(
             "Matheus",
