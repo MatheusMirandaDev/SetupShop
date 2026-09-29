@@ -12,7 +12,16 @@ import br.com.setupshop.customer.infrastructure.web.dto.CreateCustomerRequest;
 import br.com.setupshop.customer.infrastructure.web.dto.CustomerResponse;
 import br.com.setupshop.customer.infrastructure.web.dto.UpdateCustomerRequest;
 import br.com.setupshop.shared.infrastructure.web.dto.PageResponse;
+import br.com.setupshop.shared.infrastructure.web.error.ApiErrorResponse;
+import br.com.setupshop.shared.infrastructure.web.error.ValidationErrorResponse;
 import br.com.setupshop.shared.pagination.PageQuery;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +35,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(
+    name = "Customers",
+    description = "Operations for managing customers"
+)
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {
@@ -49,6 +62,39 @@ public class CustomerController {
         this.deactivateCustomerUseCase = deactivateCustomerUseCase;
     }
 
+    @Operation(
+        summary = "Create a customer",
+        description = "Creates an active customer. Name, email and phone are required."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "201",
+            description = "Customer created successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = CustomerResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid customer data",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(oneOf = {
+                    ValidationErrorResponse.class,
+                    ApiErrorResponse.class
+                })
+            )
+        ),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Email already exists",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class)
+            )
+        )
+    })
     @PostMapping
     public ResponseEntity<CustomerResponse> createCustomer(
         @Valid @RequestBody CreateCustomerRequest request) {
@@ -69,8 +115,32 @@ public class CustomerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(
+        summary = "Get a customer by ID",
+        description = "Returns the customer identified by the provided ID."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Customer found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = CustomerResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Customer not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class)
+            )
+        )
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<CustomerResponse> getCustomerById(@PathVariable Long id) {
+    public ResponseEntity<CustomerResponse> getCustomerById(
+        @Parameter(description = "Customer identifier", example = "1")
+        @PathVariable Long id) {
 
         var customer = getCustomerByIdUseCase.execute(id);
 
@@ -85,9 +155,30 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+        summary = "List customers",
+        description = "Returns a paginated list of customers."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Customers listed successfully",
+            useReturnTypeSchema = true
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid pagination parameters",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class)
+            )
+        )
+    })
     @GetMapping
     public ResponseEntity<PageResponse<CustomerResponse>> listCustomers(
+        @Parameter(description = "Zero-based page number", example = "0")
         @RequestParam(name = "page", defaultValue = "0") int page,
+        @Parameter(description = "Number of customers per page, between 1 and 100", example = "20")
         @RequestParam(name = "size", defaultValue = "20") int size) {
 
         PageQuery pageQuery = new PageQuery(page, size);
@@ -118,8 +209,50 @@ public class CustomerController {
         return ResponseEntity.ok(pageResponse);
     }
 
+    @Operation(
+        summary = "Partially update a customer",
+        description = "Updates only the provided customer fields. At least one field must be provided."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Customer updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = CustomerResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request or customer data",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(oneOf = {
+                    ValidationErrorResponse.class,
+                    ApiErrorResponse.class
+                })
+            )
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Customer not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Email already exists",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class)
+            )
+        )
+    })
     @PatchMapping("/{id}")
     public ResponseEntity<CustomerResponse> updateCustomer(
+        @Parameter(description = "Customer identifier", example = "1")
         @PathVariable Long id,
         @Valid @RequestBody UpdateCustomerRequest request) {
 
@@ -144,8 +277,28 @@ public class CustomerController {
         return ResponseEntity.ok(customerResponse);
     }
 
+    @Operation(
+        summary = "Deactivate a customer",
+        description = "Logically deactivates the customer without removing its record."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "204",
+            description = "Customer deactivated successfully"
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Customer not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class)
+            )
+        )
+    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deactivateCustomer(@PathVariable Long id) {
+    public ResponseEntity<Void> deactivateCustomer(
+        @Parameter(description = "Customer identifier", example = "1")
+        @PathVariable Long id) {
 
         deactivateCustomerUseCase.execute(id);
         return ResponseEntity.noContent().build();
