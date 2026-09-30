@@ -106,3 +106,13 @@ This document records only technical decisions already adopted by SetupShop.
   only.
 - **Consequence:** Formatting is reproducible without adding build dependencies,
   while SQL migrations remain untouched by broad formatting operations.
+
+## Continuous integration
+
+- **Context:** Product and Customer checks should run automatically on
+  code changes, including persistence tests against PostgreSQL and Flyway.
+- **Decision:** Use `.github/workflows/ci.yml` for pushes and pull
+  requests, set up Temurin Java 21, and run `./mvnw test`.
+- **Consequence:** The Maven test phase runs unit, web, and persistence
+  integration tests on a runner with Docker for Testcontainers. The POM
+  has no separate Failsafe configuration, so the CI command is `test`.

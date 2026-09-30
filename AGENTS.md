@@ -47,6 +47,13 @@ Docker must be running for persistence integration tests.
 ./mvnw -Dtest=ClassName#methodName test
 ```
 
+## Continuous integration
+
+- `.github/workflows/ci.yml` runs on pushes and pull requests.
+- It sets up Java 21 and runs `./mvnw test`, including persistence
+  integration tests with Testcontainers and PostgreSQL. The runner needs
+  Docker for those tests.
+
 ## Before a commit
 
 1. Run the relevant tests and the full suite when integration may be affected.
