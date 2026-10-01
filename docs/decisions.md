@@ -116,3 +116,15 @@ This document records only technical decisions already adopted by SetupShop.
 - **Consequence:** The Maven test phase runs unit, web, and persistence
   integration tests on a runner with Docker for Testcontainers. The POM
   has no separate Failsafe configuration, so the CI command is `test`.
+
+## Order placement and historical prices
+
+- **Context:** Catalog prices can change after a customer places an order.
+- **Decision:** Create the Order when the customer confirms the selected
+  products, before payment. Accept a customer ID and one or more product IDs
+  with quantities. Read unit prices from Product at that point, capture them
+  on the order items, and calculate item subtotals and the order total from
+  those captured prices. Payment is outside this slice.
+- **Consequence:** Later catalog price changes do not alter placed orders;
+  new orders use the prices current when they are placed. Cart behavior remains
+  a separate future slice.

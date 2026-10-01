@@ -83,5 +83,10 @@ Docker must be running for persistence integration tests.
   and logical deactivation. Its current rules include required normalized name
   and email, unique lowercase email, and a required unformatted 11-digit phone.
 - Continue as a modular monolith and deliver changes in small vertical slices.
-- Orders, inventory workflows, authentication, payments, messaging, cloud
+- Order is not implemented yet. Its first slice will record an order when the
+  customer confirms the selected products, before payment, for one customer
+  and one or more products with quantities. Capture each product's unit price
+  at that point and calculate totals from those prices; later catalog price
+  changes must not change placed orders.
+- Cart, inventory workflows, authentication, payments, messaging, cloud
   deployment, and microservices remain deferred until required by their slice.
