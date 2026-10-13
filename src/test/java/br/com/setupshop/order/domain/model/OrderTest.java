@@ -41,7 +41,6 @@ class OrderTest {
         assertThrows(IllegalArgumentException.class, () -> new Order(customerId, orderItems));
     }
 
-
     @Test
     void shouldRejectOrderWithEmptyItems() {
         Long customerId = 1L;
@@ -86,10 +85,5 @@ class OrderTest {
         assertThrows(UnsupportedOperationException.class, () ->
             order.getOrderItems().add(new OrderItem(2L, 1, new BigDecimal("20.00"))));
         assertEquals(new BigDecimal("10.00"), order.getTotal());
-    }
-
-    @Test
-    void shouldStartOrderWithCreatedStatus() {
-
     }
 }

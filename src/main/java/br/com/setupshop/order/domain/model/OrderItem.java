@@ -1,17 +1,26 @@
 package br.com.setupshop.order.domain.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 @Getter
+@Embeddable
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderItem {
 
+    @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    @Column(name = "quantity", nullable = false)
     private int quantity;
 
+    @Column(name = "unit_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal unitPrice;
 
     public OrderItem(Long productId, int quantity, BigDecimal unitPrice) {
