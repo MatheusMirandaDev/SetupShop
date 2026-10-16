@@ -4,6 +4,8 @@ import br.com.setupshop.order.domain.model.Order;
 import br.com.setupshop.order.domain.repository.OrderRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public class OrderRepositoryAdapter implements OrderRepository {
 
@@ -18,4 +20,8 @@ public class OrderRepositoryAdapter implements OrderRepository {
         return orderRepository.save(order);
     }
 
+    @Override
+    public Optional<Order> findById(Long id) {
+        return orderRepository.findById(id);
+    }
 }

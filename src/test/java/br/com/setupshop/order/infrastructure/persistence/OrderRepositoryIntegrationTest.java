@@ -119,4 +119,49 @@ class OrderRepositoryIntegrationTest {
         assertNotNull(foundOrder.getCreatedAt());
     }
 
+    @Test
+    void shouldFindOrderById() {
+
+        Customer customer = new Customer(
+            "Matheus Miranda",
+            "matheus.MIRANDA@gmail.com",
+            "61999999999"
+        );
+        Customer savedCustomer = customerRepository.save(customer);
+        assertNotNull(savedCustomer.getId());
+
+        Product product1 = new Product(
+            "Keyboard Aula F75",
+            "Wireless mechanical keyboard",
+            new BigDecimal("300.00")
+        );
+        Product savedProduct1 = productRepository.save(product1);
+        assertNotNull(savedProduct1.getId());
+
+        OrderItem item1 =
+            new OrderItem(savedProduct1.getId(), 2, savedProduct1.getPrice());
+
+        List<OrderItem> orderItems = new ArrayList<>();
+        orderItems.add(item1);
+
+        Order order = new Order(savedCustomer.getId(), orderItems);
+        Order savedOrder = orderRepository.save(order);
+        assertNotNull(savedOrder.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        Order foundOrder = orderRepository.findById(savedOrder.getId()).orElseThrow();
+
+        OrderItem foundItem1 = foundOrder.getOrderItems().stream()
+            .filter(item -> savedProduct1.getId().equals(item.getProductId()))
+            .findFirst()
+            .orElseThrow();
+
+        assertEquals(savedOrder.getId(), foundOrder.getId());
+        assertEquals(new BigDecimal("300.00"), foundItem1.getUnitPrice());
+        assertEquals(2, foundItem1.getQuantity());
+        assertEquals(new BigDecimal("600.00"), foundOrder.getTotal());
+        assertEquals("CREATED", foundOrder.getStatus().toString());
+        assertNotNull(foundOrder.getCreatedAt());
+    }
 }
