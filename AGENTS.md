@@ -2,21 +2,21 @@
 
 ## Project
 
-SetupShop is a modular-monolith REST API for e-commerce management. It uses
+SetupShop is a modular monolith REST API for e-commerce management. It uses
 Java 21, Spring Boot 4, Spring Web MVC, Spring Data JPA/Hibernate, Jakarta
 Validation, PostgreSQL 17, Flyway, Docker Compose, Maven Wrapper, Lombok,
 OpenAPI/Swagger, JUnit, Mockito, and Testcontainers.
 
 ## Architecture
 
-- Organize code by business feature, such as `product` and `customer`.
+- Organize code by business feature, such as `product`, `customer`, and `order`.
 - `domain`: entities, invariants, exceptions, and technology-independent
   repository contracts.
 - `application/usecase`: commands and use cases that coordinate domain
   operations.
 - `infrastructure/persistence`: Spring Data repositories and adapters.
 - `infrastructure/web`: controllers, DTOs, request validation, and HTTP errors.
-- `shared`: only genuinely reusable configuration and pagination types.
+- `shared`: only genuinely reusable configuration, pagination, and HTTP types.
 - Keep framework and HTTP concerns out of domain repository contracts and
   application-owned pagination types.
 
@@ -83,10 +83,11 @@ Docker must be running for persistence integration tests.
   and logical deactivation. Its current rules include required normalized name
   and email, unique lowercase email, and a required unformatted 11-digit phone.
 - Continue as a modular monolith and deliver changes in small vertical slices.
-- Order is not implemented yet. Its first slice will record an order when the
-  customer confirms the selected products, before payment, for one customer
-  and one or more products with quantities. Capture each product's unit price
-  at that point and calculate totals from those prices; later catalog price
-  changes must not change placed orders.
+- Order placement is implemented through `POST /orders`. It creates an order
+  when an active customer confirms one or more active products with positive
+  quantities, before payment. Each OrderItem records the product's unit price
+  at placement; subtotals and the stored order total use `BigDecimal`. The
+  initial status is `CREATED`, and later catalog price changes do not alter
+  placed orders. Order lookup and other order operations are not implemented.
 - Cart, inventory workflows, authentication, payments, messaging, cloud
   deployment, and microservices remain deferred until required by their slice.

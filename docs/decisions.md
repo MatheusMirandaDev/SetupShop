@@ -4,8 +4,8 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Modular monolith organized by feature
 
-- **Context:** Product and Customer belong to the same e-commerce application
-  and currently share infrastructure and deployment.
+- **Context:** Product, Customer, and Order belong to the same e-commerce
+  application and currently share infrastructure and deployment.
 - **Decision:** Keep a modular monolith organized first by business feature.
 - **Consequence:** New features remain isolated by package without introducing
   distributed-system complexity.
@@ -109,7 +109,7 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Continuous integration
 
-- **Context:** Product and Customer checks should run automatically on
+- **Context:** Product, Customer, and Order checks should run automatically on
   code changes, including persistence tests against PostgreSQL and Flyway.
 - **Decision:** Use `.github/workflows/ci.yml` for pushes and pull
   requests, set up Temurin Java 21, and run `./mvnw test`.
@@ -119,12 +119,27 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Order placement and historical prices
 
-- **Context:** Catalog prices can change after a customer places an order.
+- **Context:** Catalog prices and product or customer availability can change
+  after a customer places an order.
 - **Decision:** Create the Order when the customer confirms the selected
-  products, before payment. Accept a customer ID and one or more product IDs
-  with quantities. Read unit prices from Product at that point, capture them
-  on the order items, and calculate item subtotals and the order total from
-  those captured prices. Payment is outside this slice.
+  products, before payment. Require an active customer and one or more active
+  products with positive quantities. Read each unit price from Product at that
+  point, capture it on the order item, and calculate item subtotals and the
+  order total with `BigDecimal`. Start the order in `CREATED` status.
 - **Consequence:** Later catalog price changes do not alter placed orders;
-  new orders use the prices current when they are placed. Cart behavior remains
-  a separate future slice.
+  new orders use the prices current when they are placed. Inactive customers
+  and products cannot be used for new orders. Cart and payment remain separate
+  future slices.
+
+## Order aggregate and persistence
+
+- **Context:** Order items belong to a single order and must retain the price
+  recorded at placement, independently of later catalog changes.
+- **Decision:** Model Order as the aggregate root and OrderItem as a value
+  object stored with the order. Persist the item product ID, quantity, and
+  captured unit price in `order_items`; derive each subtotal and store the
+  calculated total on `orders`. Generate `created_at` in PostgreSQL and manage
+  both tables through Flyway migrations.
+- **Consequence:** Items have no independent repository or lifecycle. Reloaded
+  orders retain their recorded prices and totals, while catalog changes affect
+  only orders placed afterward.
