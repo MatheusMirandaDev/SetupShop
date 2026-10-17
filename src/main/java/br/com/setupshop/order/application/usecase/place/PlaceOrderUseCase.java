@@ -56,7 +56,7 @@ public class PlaceOrderUseCase {
             .findById(customerId)
             .orElseThrow(() -> new CustomerNotFoundException(customerId));
 
-        if (!customer.isActive()){
+        if (!customer.isActive()) {
             throw new InactiveCustomerException(customerId);
         }
 
@@ -68,7 +68,7 @@ public class PlaceOrderUseCase {
                 .findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
 
-            if (!product.isActive()){
+            if (!product.isActive()) {
                 throw new InactiveProductException(productId);
             }
 

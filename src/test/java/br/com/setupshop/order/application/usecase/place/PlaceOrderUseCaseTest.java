@@ -247,7 +247,9 @@ class PlaceOrderUseCaseTest {
         Order placedOrder = placeOrderUseCase.execute(command);
         product.changePrice(new BigDecimal("200.00"));
 
-        assertEquals(new BigDecimal("140.00"), placedOrder.getOrderItems().getFirst().getUnitPrice());
+        assertEquals(new BigDecimal("140.00"), placedOrder.getOrderItems()
+            .getFirst()
+            .getUnitPrice());
         assertEquals(new BigDecimal("280.00"), placedOrder.getTotal());
         assertEquals(new BigDecimal("200.00"), product.getPrice());
     }

@@ -27,7 +27,8 @@ public class UpdateProductUseCase {
             throw new IllegalArgumentException("At least one field must be provided");
         }
 
-        Product product = productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new ProductNotFoundException(id));
 
         product.updateDetails(
             command.name(),

@@ -219,7 +219,8 @@ class CustomerRepositoryIntegrationTest {
         entityManager.flush();
         entityManager.clear();
 
-        Customer reloadedCustomer = customerRepository.findById(savedCustomer.getId()).orElseThrow();;
+        Customer reloadedCustomer = customerRepository.findById(savedCustomer.getId())
+            .orElseThrow();
 
         assertFalse(reloadedCustomer.isActive());
     }
