@@ -88,6 +88,7 @@ Docker must be running for persistence integration tests.
   quantities, before payment. Each OrderItem records the product's unit price
   at placement; subtotals and the stored order total use `BigDecimal`. The
   initial status is `CREATED`, and later catalog price changes do not alter
-  placed orders. Order lookup and other order operations are not implemented.
+  placed orders. `GET /orders/{id}` retrieves a placed order by ID. Other order
+  operations are not implemented.
 - Cart, inventory workflows, authentication, payments, messaging, cloud
   deployment, and microservices remain deferred until required by their slice.
