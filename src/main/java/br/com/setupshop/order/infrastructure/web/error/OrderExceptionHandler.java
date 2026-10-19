@@ -2,6 +2,7 @@ package br.com.setupshop.order.infrastructure.web.error;
 
 import br.com.setupshop.order.domain.exception.InactiveCustomerException;
 import br.com.setupshop.order.domain.exception.InactiveProductException;
+import br.com.setupshop.order.domain.exception.OrderNotFoundException;
 import br.com.setupshop.shared.infrastructure.web.error.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -36,6 +37,23 @@ public class OrderExceptionHandler {
         InactiveCustomerException exception, HttpServletRequest request) {
 
         var status = HttpStatus.CONFLICT;
+
+        ApiErrorResponse errorResponse = new ApiErrorResponse(
+            Instant.now(),
+            status.value(),
+            status.getReasonPhrase(),
+            exception.getMessage(),
+            request.getRequestURI()
+        );
+
+        return ResponseEntity.status(status).body(errorResponse);
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleOrderNotFoundException(
+        OrderNotFoundException exception, HttpServletRequest request) {
+
+        var status = HttpStatus.NOT_FOUND;
 
         ApiErrorResponse errorResponse = new ApiErrorResponse(
             Instant.now(),

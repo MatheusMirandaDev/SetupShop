@@ -1,11 +1,13 @@
 package br.com.setupshop.order.infrastructure.web;
 
 import br.com.setupshop.customer.domain.exception.CustomerNotFoundException;
+import br.com.setupshop.order.application.usecase.get.GetOrderByIdUseCase;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderCommand;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderItemCommand;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderUseCase;
 import br.com.setupshop.order.domain.exception.InactiveCustomerException;
 import br.com.setupshop.order.domain.exception.InactiveProductException;
+import br.com.setupshop.order.domain.exception.OrderNotFoundException;
 import br.com.setupshop.order.domain.model.Order;
 import br.com.setupshop.order.domain.model.OrderItem;
 import br.com.setupshop.order.domain.model.OrderStatus;
@@ -23,10 +25,12 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,6 +44,9 @@ class OrderControllerTest {
 
     @MockitoBean
     private PlaceOrderUseCase placeOrderUseCase;
+
+    @MockitoBean
+    private GetOrderByIdUseCase getOrderByIdUseCase;
 
     @Test
     void shouldPlaceOrderAndReturnCreated() throws Exception {
@@ -284,6 +291,60 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Customer not found with id: " + customerId))
             .andExpect(jsonPath("$.path").value("/orders"));
+    }
 
+    @Test
+    void shouldReturnOrderById() throws Exception {
+
+        Long orderId = 19L;
+        Long customerId = 5L;
+        Long productId = 24L;
+        int quantity = 3;
+        BigDecimal unitPrice = new BigDecimal("140.00");
+
+        OrderItem orderItem = new OrderItem(productId, quantity, unitPrice);
+        Order order = mock(Order.class);
+
+        when(getOrderByIdUseCase.execute(orderId)).thenReturn(order);
+        when(order.getId()).thenReturn(orderId);
+        when(order.getCustomerId()).thenReturn(customerId);
+        when(order.getOrderItems()).thenReturn(List.of(orderItem));
+        when(order.getStatus()).thenReturn(OrderStatus.CREATED);
+        when(order.getTotal()).thenReturn(unitPrice.multiply(new BigDecimal(quantity)));
+
+        mockMvc
+            .perform(get("/orders/{id}", orderId))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.id").value(orderId))
+            .andExpect(jsonPath("$.customerId").value(customerId))
+            .andExpect(jsonPath("$.items[0].productId").value(productId))
+            .andExpect(jsonPath("$.items[0].quantity").value(quantity))
+            .andExpect(jsonPath("$.items[0].unitPrice").value(unitPrice.doubleValue()))
+            .andExpect(jsonPath("$.items[0].subtotal").value(420.00))
+            .andExpect(jsonPath("$.status").value(OrderStatus.CREATED.toString()))
+            .andExpect(jsonPath("$.total").value(420.00));
+
+        verify(getOrderByIdUseCase).execute(orderId);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenOrderDoesNotExist() throws Exception {
+        Long orderId = 1100L;
+
+        when(getOrderByIdUseCase.execute(orderId))
+            .thenThrow(new OrderNotFoundException(orderId));
+
+        mockMvc
+            .perform(get("/orders/{id}", orderId))
+            .andExpect(status().isNotFound())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Order not found with id: " + orderId))
+            .andExpect(jsonPath("$.path").value("/orders/" + orderId));
+
+        verify(getOrderByIdUseCase).execute(orderId);
     }
 }

@@ -151,6 +151,7 @@ class OrderRepositoryIntegrationTest {
         entityManager.clear();
 
         Order foundOrder = orderRepository.findById(savedOrder.getId()).orElseThrow();
+        entityManager.clear();
 
         OrderItem foundItem1 = foundOrder.getOrderItems().stream()
             .filter(item -> savedProduct1.getId().equals(item.getProductId()))
