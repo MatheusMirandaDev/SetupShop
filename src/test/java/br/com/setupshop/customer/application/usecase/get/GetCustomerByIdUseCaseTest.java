@@ -49,7 +49,10 @@ class GetCustomerByIdUseCaseTest {
         Long customerId = 1L;
 
         when(customerRepository.findById(customerId)).thenReturn(Optional.empty());
-        var exception = assertThrows(CustomerNotFoundException.class, () -> customerUseCase.execute(customerId));
+        var exception = assertThrows(
+            CustomerNotFoundException.class,
+            () -> customerUseCase.execute(customerId)
+        );
 
         assertEquals("Customer not found with id: " + customerId, exception.getMessage());
         verify(customerRepository).findById(customerId);
