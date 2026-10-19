@@ -25,7 +25,6 @@ import java.util.Objects;
 @Entity
 @Table(name = "orders")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-
 public class Order {
 
     @Id
@@ -54,6 +53,14 @@ public class Order {
     )
     private Instant createdAt;
 
+    public List<OrderItem> getOrderItems() {
+        return List.copyOf(orderItems);
+    }
+
+    public BigDecimal total() {
+        return total;
+    }
+
     public Order(Long customerId, List<OrderItem> orderItems) {
         if (customerId == null || customerId <= 0) {
             throw new IllegalArgumentException("Customer ID must be valid");
@@ -71,13 +78,5 @@ public class Order {
         this.total = orderItems.stream()
             .map(OrderItem::subtotal)
             .reduce(BigDecimal.ZERO.setScale(2), BigDecimal::add);
-    }
-
-    public List<OrderItem> getOrderItems() {
-        return List.copyOf(orderItems);
-    }
-
-    public BigDecimal total() {
-        return total;
     }
 }
