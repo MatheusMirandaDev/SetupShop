@@ -1,6 +1,7 @@
 package br.com.setupshop.order.infrastructure.web;
 
 import br.com.setupshop.order.application.usecase.get.GetOrderByIdUseCase;
+import br.com.setupshop.order.application.usecase.list.ListOrdersUseCase;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderCommand;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderItemCommand;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderUseCase;
@@ -8,10 +9,13 @@ import br.com.setupshop.order.domain.model.Order;
 import br.com.setupshop.order.domain.model.OrderItem;
 import br.com.setupshop.order.infrastructure.web.dto.OrderItemResponse;
 import br.com.setupshop.order.infrastructure.web.dto.OrderResponse;
+import br.com.setupshop.order.infrastructure.web.dto.OrderSummaryResponse;
 import br.com.setupshop.order.infrastructure.web.dto.PlaceOrderItemRequest;
 import br.com.setupshop.order.infrastructure.web.dto.PlaceOrderRequest;
+import br.com.setupshop.shared.infrastructure.web.dto.PageResponse;
 import br.com.setupshop.shared.infrastructure.web.error.ApiErrorResponse;
 import br.com.setupshop.shared.infrastructure.web.error.ValidationErrorResponse;
+import br.com.setupshop.shared.pagination.PageQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -42,12 +47,12 @@ public class OrderController {
 
     private final PlaceOrderUseCase placeOrderUseCase;
     private final GetOrderByIdUseCase getOrderByIdUseCase;
+    private final ListOrdersUseCase listOrdersUseCase;
 
-    public OrderController(
-        PlaceOrderUseCase placeOrderUseCase,
-        GetOrderByIdUseCase getOrderByIdUseCase) {
+    public OrderController(PlaceOrderUseCase placeOrderUseCase, GetOrderByIdUseCase getOrderByIdUseCase, ListOrdersUseCase listOrdersUseCase) {
         this.placeOrderUseCase = placeOrderUseCase;
         this.getOrderByIdUseCase = getOrderByIdUseCase;
+        this.listOrdersUseCase = listOrdersUseCase;
     }
 
     private OrderResponse toResponse(Order order) {
@@ -165,5 +170,58 @@ public class OrderController {
         OrderResponse response = toResponse(order);
 
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+        summary = "List orders",
+        description = "Returns a paginated list of orders."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Orders listed successfully",
+            useReturnTypeSchema = true
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid pagination parameters",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class)
+            )
+        )
+    })
+    @GetMapping
+    public ResponseEntity<PageResponse<OrderSummaryResponse>> listOrders(
+        @Parameter(description = "Zero-based page number", example = "0")
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        @Parameter(description = "Number of orders per page, between 1 and 100", example = "20")
+        @RequestParam(name = "size", defaultValue = "20") int size) {
+
+        PageQuery pageQuery = new PageQuery(page, size);
+
+        var pageResult = listOrdersUseCase.execute(pageQuery);
+
+        var responses =
+            pageResult.content().stream()
+                .map(order ->
+                    new OrderSummaryResponse(
+                        order.getId(),
+                        order.getCustomerId(),
+                        order.getStatus(),
+                        order.getTotal()
+                    )
+                ).toList();
+
+        PageResponse<OrderSummaryResponse> pageResponse =
+            new PageResponse<>(
+                responses,
+                pageResult.page(),
+                pageResult.size(),
+                pageResult.totalElements(),
+                pageResult.totalPages()
+            );
+
+        return ResponseEntity.ok(pageResponse);
     }
 }

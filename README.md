@@ -24,7 +24,7 @@ later catalog changes do not alter placed orders.
 | --- | --- |
 | Products | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Customers | Create, get by ID, list with pagination, partially update, and logically deactivate |
-| Orders | Place an order for one customer and one or more products with quantities; get an order by ID |
+| Orders | Place an order, get an order by ID, and list orders with pagination |
 
 Products and customers remain readable after logical deactivation. Both must be
 active to participate in a new order. Customer records are business entities;
@@ -92,10 +92,11 @@ These links are available while the application is running locally.
 | `DELETE` | `/customers/{id}` | Logically deactivate a customer (`204`) |
 | `POST` | `/orders` | Place and return an order (`201`) |
 | `GET` | `/orders/{id}` | Get an order (`200`) |
+| `GET` | `/orders?page=0&size=20` | List order summaries (`200`) |
 
-Product and customer lists use zero-based pages. The default page is `0`, the
-default size is `20`, and size must be between `1` and `100`. List responses
-include `content`, `page`, `size`, `totalElements`, and `totalPages`.
+Product, customer, and order lists use zero-based pages. The default page is
+`0`, the default size is `20`, and size must be between `1` and `100`. List
+responses include `content`, `page`, `size`, `totalElements`, and `totalPages`.
 
 ### Products
 
@@ -253,6 +254,30 @@ curl -i http://localhost:8080/orders/1
 unit prices, subtotals, status, and total. It returns `200 OK` when the order
 exists and `404 Not Found` when it does not.
 
+List orders in ascending ID order:
+
+```bash
+curl -i 'http://localhost:8080/orders?page=0&size=20'
+```
+
+An illustrative `200 OK` response with one order is:
+
+```json
+{
+  "content": [
+    { "id": 1, "customerId": 1, "status": "CREATED", "total": 1200.00 }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1
+}
+```
+
+The paginated response contains summaries with `id`, `customerId`, `status`,
+and `total`; it does not include items. Use `GET /orders/{id}` for the items
+and their captured prices. Invalid page or size values return `400 Bad Request`.
+
 | Status | When placing an order |
 | --- | --- |
 | `201` | Order created |
@@ -277,7 +302,7 @@ src/main/java/br/com/setupshop/
 ├── customer/
 ├── order/
 │   ├── domain/                  # Models, invariants, repository contract
-│   ├── application/usecase/     # Commands, order placement, and lookup
+│   ├── application/usecase/     # Commands, order placement, lookup, and listing
 │   └── infrastructure/
 │       ├── persistence/         # JPA repository and adapter
 │       └── web/                 # Controller, DTOs, and HTTP errors
@@ -333,5 +358,5 @@ runner needs Docker for Testcontainers.
 Swagger UI documents the current HTTP contract. The domain model and technical
 decisions record the design behind it. Cart, inventory workflows,
 authentication, payment, messaging, and cloud deployment are deferred. The
-current Order API supports placement and lookup by ID. Other order operations
-have not been added yet.
+current Order API supports placement, lookup by ID, and paginated listing.
+Other order operations have not been added yet.

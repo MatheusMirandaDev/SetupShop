@@ -64,8 +64,8 @@ This document records only technical decisions already adopted by SetupShop.
 - **Decision:** Use `PageQuery` and `PageResult<T>` outside Spring, converting
   them in the persistence adapter and exposing `PageResponse<T>` over HTTP.
 - **Consequence:** Application and domain contracts do not depend on Spring
-  Data. Pages are zero-based, size is limited to 1–100, and Product and Customer
-  listings are sorted by ascending ID.
+  Data. Pages are zero-based, size is limited to 1–100, and Product, Customer,
+  and Order listings are sorted by ascending ID.
 
 ## Database evolution and timestamps
 
@@ -143,3 +143,15 @@ This document records only technical decisions already adopted by SetupShop.
 - **Consequence:** Items have no independent repository or lifecycle. Reloaded
   orders retain their recorded prices and totals, while catalog changes affect
   only orders placed afterward.
+
+## Order lookup and listing
+
+- **Context:** Looking up one order needs its recorded items, while a paginated
+  list needs only enough data to identify and summarize each order.
+- **Decision:** `GET /orders/{id}` returns the order with its items and fetches
+  them with an entity graph. `GET /orders` returns paginated summaries containing
+  the order ID, customer ID, status, and total, without loading each item's
+  collection for the response.
+- **Consequence:** The detail endpoint can return items after the repository
+  session closes. The list endpoint keeps pagination on orders and avoids
+  loading item collections for every result.

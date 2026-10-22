@@ -2,6 +2,7 @@ package br.com.setupshop.order.infrastructure.web;
 
 import br.com.setupshop.customer.domain.exception.CustomerNotFoundException;
 import br.com.setupshop.order.application.usecase.get.GetOrderByIdUseCase;
+import br.com.setupshop.order.application.usecase.list.ListOrdersUseCase;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderCommand;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderItemCommand;
 import br.com.setupshop.order.application.usecase.place.PlaceOrderUseCase;
@@ -12,6 +13,8 @@ import br.com.setupshop.order.domain.model.Order;
 import br.com.setupshop.order.domain.model.OrderItem;
 import br.com.setupshop.order.domain.model.OrderStatus;
 import br.com.setupshop.product.domain.exception.ProductNotFoundException;
+import br.com.setupshop.shared.pagination.PageQuery;
+import br.com.setupshop.shared.pagination.PageResult;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +50,9 @@ class OrderControllerTest {
 
     @MockitoBean
     private GetOrderByIdUseCase getOrderByIdUseCase;
+
+    @MockitoBean
+    private ListOrdersUseCase listOrdersUseCase;
 
     @Test
     void shouldPlaceOrderAndReturnCreated() throws Exception {
@@ -346,5 +352,82 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.path").value("/orders/" + orderId));
 
         verify(getOrderByIdUseCase).execute(orderId);
+    }
+
+    @Test
+    void shouldListOrdersWithPagination() throws Exception {
+        Long orderId1 = 1L;
+        Long customerId = 5L;
+        int quantity1 = 3;
+        BigDecimal unitPrice1 = new BigDecimal("140.00");
+
+        Order order1 = mock(Order.class);
+
+        when(order1.getId()).thenReturn(orderId1);
+        when(order1.getCustomerId()).thenReturn(customerId);
+        when(order1.getStatus()).thenReturn(OrderStatus.CREATED);
+        when(order1.getTotal()).thenReturn(unitPrice1.multiply(new BigDecimal(quantity1)));
+
+        Long orderId2 = 2L;
+        int quantity2 = 2;
+        BigDecimal unitPrice2 = new BigDecimal("300.00");
+
+        Order order2 = mock(Order.class);
+
+        when(order2.getId()).thenReturn(orderId2);
+        when(order2.getCustomerId()).thenReturn(customerId);
+
+        when(order2.getStatus()).thenReturn(OrderStatus.CREATED);
+        when(order2.getTotal()).thenReturn(unitPrice2.multiply(new BigDecimal(quantity2)));
+
+        PageQuery pageQuery = new PageQuery(0, 2);
+        PageResult<Order> pageResult = new PageResult<>(
+            List.of(order1, order2), 0, 2, 2, 1
+        );
+
+        when(listOrdersUseCase.execute(pageQuery)).thenReturn(pageResult);
+
+        mockMvc
+            .perform(get("/orders")
+                .param("page", "0")
+                .param("size", "2"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+            .andExpect(jsonPath("$.content[0].id").value(orderId1))
+            .andExpect(jsonPath("$.content[0].customerId").value(customerId))
+            .andExpect(jsonPath("$.content[0].status")
+                .value(OrderStatus.CREATED.toString()))
+            .andExpect(jsonPath("$.content[0].total")
+                .value(new BigDecimal("420.00").doubleValue()))
+            .andExpect(jsonPath("$.content[1].id").value(orderId2))
+            .andExpect(jsonPath("$.content[1].customerId").value(customerId))
+            .andExpect(jsonPath("$.content[1].status")
+                .value(OrderStatus.CREATED.toString()))
+            .andExpect(jsonPath("$.content[1].total")
+                .value(new BigDecimal("600.00").doubleValue()))
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(2))
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.totalPages").value(1));
+
+        verify(listOrdersUseCase).execute(pageQuery);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenOrderPageSizeIsInvalid() throws Exception {
+
+        mockMvc
+            .perform(get("/orders")
+                .param("page", "0")
+                .param("size", "121"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.timestamp").exists())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message")
+                .value("Page size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/orders"));
+
+        verifyNoInteractions(listOrdersUseCase);
     }
 }
