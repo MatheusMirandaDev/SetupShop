@@ -4,8 +4,8 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Modular monolith organized by feature
 
-- **Context:** Product and Customer belong to the same e-commerce application
-  and currently share infrastructure and deployment.
+- **Context:** Product, Customer, and Order belong to the same e-commerce
+  application and currently share infrastructure and deployment.
 - **Decision:** Keep a modular monolith organized first by business feature.
 - **Consequence:** New features remain isolated by package without introducing
   distributed-system complexity.
@@ -64,8 +64,8 @@ This document records only technical decisions already adopted by SetupShop.
 - **Decision:** Use `PageQuery` and `PageResult<T>` outside Spring, converting
   them in the persistence adapter and exposing `PageResponse<T>` over HTTP.
 - **Consequence:** Application and domain contracts do not depend on Spring
-  Data. Pages are zero-based, size is limited to 1–100, and Product and Customer
-  listings are sorted by ascending ID.
+  Data. Pages are zero-based, size is limited to 1–100, and Product, Customer,
+  and Order listings are sorted by ascending ID.
 
 ## Database evolution and timestamps
 
@@ -109,10 +109,49 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Continuous integration
 
-- **Context:** Product and Customer checks should run automatically on
+- **Context:** Product, Customer, and Order checks should run automatically on
   code changes, including persistence tests against PostgreSQL and Flyway.
 - **Decision:** Use `.github/workflows/ci.yml` for pushes and pull
   requests, set up Temurin Java 21, and run `./mvnw test`.
 - **Consequence:** The Maven test phase runs unit, web, and persistence
   integration tests on a runner with Docker for Testcontainers. The POM
   has no separate Failsafe configuration, so the CI command is `test`.
+
+## Order placement and historical prices
+
+- **Context:** Catalog prices and product or customer availability can change
+  after a customer places an order.
+- **Decision:** Create the Order when the customer confirms the selected
+  products, before payment. Require an active customer and one or more active
+  products with positive quantities. Read each unit price from Product at that
+  point, capture it on the order item, and calculate item subtotals and the
+  order total with `BigDecimal`. Start the order in `CREATED` status.
+- **Consequence:** Later catalog price changes do not alter placed orders;
+  new orders use the prices current when they are placed. Inactive customers
+  and products cannot be used for new orders. Cart and payment remain separate
+  future slices.
+
+## Order aggregate and persistence
+
+- **Context:** Order items belong to a single order and must retain the price
+  recorded at placement, independently of later catalog changes.
+- **Decision:** Model Order as the aggregate root and OrderItem as a value
+  object stored with the order. Persist the item product ID, quantity, and
+  captured unit price in `order_items`; derive each subtotal and store the
+  calculated total on `orders`. Generate `created_at` in PostgreSQL and manage
+  both tables through Flyway migrations.
+- **Consequence:** Items have no independent repository or lifecycle. Reloaded
+  orders retain their recorded prices and totals, while catalog changes affect
+  only orders placed afterward.
+
+## Order lookup and listing
+
+- **Context:** Looking up one order needs its recorded items, while a paginated
+  list needs only enough data to identify and summarize each order.
+- **Decision:** `GET /orders/{id}` returns the order with its items and fetches
+  them with an entity graph. `GET /orders` returns paginated summaries containing
+  the order ID, customer ID, status, and total, without loading each item's
+  collection for the response.
+- **Consequence:** The detail endpoint can return items after the repository
+  session closes. The list endpoint keeps pagination on orders and avoids
+  loading item collections for every result.

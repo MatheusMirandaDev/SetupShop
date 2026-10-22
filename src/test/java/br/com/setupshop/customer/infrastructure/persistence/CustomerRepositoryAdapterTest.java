@@ -2,7 +2,6 @@ package br.com.setupshop.customer.infrastructure.persistence;
 
 import br.com.setupshop.customer.domain.model.Customer;
 import br.com.setupshop.shared.pagination.PageQuery;
-import br.com.setupshop.shared.pagination.PageResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;

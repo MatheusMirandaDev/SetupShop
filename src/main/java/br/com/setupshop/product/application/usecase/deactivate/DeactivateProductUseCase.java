@@ -18,7 +18,8 @@ public class DeactivateProductUseCase {
     @Transactional
     public void execute(Long id) {
 
-        Product product = productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new ProductNotFoundException(id));
         product.deactivate();
         productRepository.save(product);
     }
