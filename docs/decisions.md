@@ -4,7 +4,7 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Modular monolith organized by feature
 
-- **Context:** Product, Customer, and Order belong to the same e-commerce
+- **Context:** Product, Customer, Order, and Account belong to the same e-commerce
   application and currently share infrastructure and deployment.
 - **Decision:** Keep a modular monolith organized first by business feature.
 - **Consequence:** New features remain isolated by package without introducing
@@ -90,7 +90,7 @@ This document records only technical decisions already adopted by SetupShop.
 
 - **Context:** A business customer is not necessarily the account used for
   authentication.
-- **Decision:** Keep `Customer` separate from any future login account.
+- **Decision:** Keep `Customer` separate from `Account`.
   Normalize required names and emails, store emails in lowercase with a unique
   database constraint, and store phone numbers as exactly 11 unformatted ASCII
   digits.
@@ -155,3 +155,59 @@ This document records only technical decisions already adopted by SetupShop.
 - **Consequence:** The detail endpoint can return items after the repository
   session closes. The list endpoint keeps pagination on orders and avoids
   loading item collections for every result.
+
+## Account domain and persistence
+
+- **Context:** Credentials and permissions need storage separate from Customer
+  business data before registration and authentication are implemented.
+- **Decision:** Persist Account in `accounts`, introduced by Flyway migration
+  `V6`, through a framework-independent `AccountRepository` contract and a JPA
+  adapter. Store a generated ID, login email, supplied password hash, role,
+  Customer ID, and creation and update timestamps. The domain trims and
+  lowercases email, checks its format and 255-character limit, rejects missing
+  or blank password hashes and missing roles, and requires positive Customer
+  IDs when provided. Store roles as enum names (`CUSTOMER` or `ADMIN`). Require
+  a Customer ID for `CUSTOMER` accounts. Enforce unique emails, unique Customer
+  links, a Customer foreign key, and the conditional Customer requirement in
+  PostgreSQL. Generate timestamps with database defaults and the existing
+  update trigger function.
+- **Consequence:** Each Customer can have at most one Account. The persistence
+  slice accepts a hash already calculated outside Account; it does not yet
+  provide registration, password hashing, or login. The nullable Customer link
+  does not settle how administrator accounts are created or linked to Customers.
+
+## Customer account registration (planned)
+
+- **Context:** `Customer` represents business data, while a login account
+  represents credentials and permissions. A person should enter their data
+  once when registering.
+- **Decision:** Keep `Customer` and `Account` as separate models. Customer
+  registration accepts name, email, phone, and password, then creates both
+  records in one transaction. Link the account to the customer by customer ID,
+  not by email. Keep name and phone on Customer instead of duplicating them on
+  Account. Assign the `CUSTOMER` role on the server and store only a password
+  hash. Each Customer may have at most one Account, and login emails must be
+  unique across Accounts. Registration with an email already used by an Account
+  must be rejected with an indication that the email is already in use.
+  CPF is outside the first registration slice. Customer registration and
+  authentication precede a real payment integration.
+- **Consequence:** Registration cannot leave only one of the records persisted.
+  Changing a customer's email must update the email used for login in the same
+  operation. Account storage is implemented. The registration use case and
+  endpoints, password hashing configuration, and Customer-to-Account email
+  synchronization remain to be implemented. Access for existing Customers
+  without Accounts and the registration HTTP error contract remain open.
+
+## Order access policy (planned)
+
+- **Context:** Login alone does not establish which order an account may
+  create or read.
+- **Decision:** An authenticated customer may create orders only for their own
+  customer ID and read or list only their own orders. An administrator may read
+  any order and list all orders, but may not place one. Unauthenticated callers
+  may not use Order endpoints.
+- **Consequence:** Order placement must obtain the customer identity from the
+  authenticated account instead of trusting a customer ID in the request.
+  Order detail must check ownership, and paginated listing must filter by
+  ownership before calculating page content and totals. These rules are agreed
+  but are not enforced by the current API yet.

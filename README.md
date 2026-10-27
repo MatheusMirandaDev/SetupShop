@@ -25,10 +25,16 @@ later catalog changes do not alter placed orders.
 | Products | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Customers | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Orders | Place an order, get an order by ID, and list orders with pagination |
+| Accounts | Domain model and persistence with unique login email and Customer link; no HTTP endpoints yet |
 
 Products and customers remain readable after logical deactivation. Both must be
 active to participate in a new order. Customer records are business entities;
-they are separate from any future login accounts.
+they are separate from Accounts.
+
+Account persistence stores a normalized login email, a supplied password hash,
+role, Customer link, and database-managed timestamps. Registration, password
+hashing, authentication, and authorization remain to be implemented. Existing
+Customer email updates do not yet synchronize Account email.
 
 ## Getting started
 
@@ -294,12 +300,16 @@ and response schemas are available in Swagger UI.
 ## Architecture
 
 The project is organized by business feature. `product`, `customer`, and
-`order` each separate business rules, orchestration, and framework code:
+`order` each separate business rules, orchestration, and framework code.
+`account` currently contains the domain and persistence slice:
 
 ```text
 src/main/java/br/com/setupshop/
 ├── product/
 ├── customer/
+├── account/
+│   ├── domain/                  # Account, role, repository contract
+│   └── infrastructure/persistence/ # JPA repository and adapter
 ├── order/
 │   ├── domain/                  # Models, invariants, repository contract
 │   ├── application/usecase/     # Commands, order placement, lookup, and listing
@@ -329,10 +339,15 @@ uses `ddl-auto: validate` rather than creating or modifying tables.
 | `V3` | Create customers |
 | `V4` | Create orders |
 | `V5` | Create order items |
+| `V6` | Create accounts with unique email and Customer link, foreign key, and timestamps |
 
 Order items store product IDs, quantities, and captured unit prices. Orders
 store their calculated totals and start with status `CREATED`. Database defaults
 generate creation timestamps.
+
+Each Customer can have at most one Account. Accounts with the `CUSTOMER` role
+require a Customer ID. Account creation and update timestamps are managed by
+PostgreSQL defaults and an update trigger.
 
 ## Tests and CI
 
@@ -356,7 +371,9 @@ runner needs Docker for Testcontainers.
 ## Documentation and future scope
 
 Swagger UI documents the current HTTP contract. The domain model and technical
-decisions record the design behind it. Cart, inventory workflows,
-authentication, payment, messaging, and cloud deployment are deferred. The
-current Order API supports placement, lookup by ID, and paginated listing.
+decisions record the design behind it. Customer registration and authentication
+are planned after the completed Account domain and persistence slice. The
+planned Order access policy is not yet enforced. Cart, inventory workflows,
+payment, messaging, and cloud deployment remain deferred. The current Order
+API supports placement, lookup by ID, and paginated listing.
 Other order operations have not been added yet.

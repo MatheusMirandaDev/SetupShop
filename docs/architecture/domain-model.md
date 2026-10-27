@@ -40,6 +40,29 @@ classDiagram
         Email is stored in lowercase;
         Phone number must contain exactly 11 digits without formatting."
 
+    class Account {
+        <<aggregateroot>>
+        -Long id
+        -String email
+        -String passwordHash
+        -Long customerId
+        -AccountRole role
+        -Instant createdAt
+        -Instant updatedAt
+    }
+    note for Account "Login email is required, normalized to lowercase, and unique;
+        A non-blank password hash and a role are required;
+        CUSTOMER accounts require a Customer ID;
+        A supplied Customer ID must be positive and reference an existing Customer;
+        Each Customer can have at most one Account;
+        Timestamps are managed by the database."
+
+    class AccountRole {
+        <<enumeration>>
+        CUSTOMER
+        ADMIN
+    }
+
     class Order {
         <<aggregateroot>>
         -Long id
@@ -69,6 +92,13 @@ classDiagram
     Subtotal is unit price multiplied by quantity."
         
     Customer "1" --> "0..*" Order: places (customerId)
+    Customer "0..1" <-- "0..1" Account: references (customerId)
+    Account --> AccountRole: role
     Order "1" *-- "1..*" OrderItem: contains
     Product "1" <-- "0..*" OrderItem: references (productId)
 ``` 
+
+Account domain and persistence are implemented. Registration, password hashing,
+authentication, and authorization remain planned. The optional Customer link in
+the diagram reflects the current mapping; `CUSTOMER` accounts always require
+that link. Administrator creation and Customer linkage rules remain open.

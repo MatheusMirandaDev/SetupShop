@@ -78,7 +78,7 @@ Docker must be running for persistence integration tests.
 - Product supports creation, lookup by ID, paginated listing, partial update,
   and logical deactivation. Inactive products remain consultable but are not
   available for new purchases.
-- Customer is a business entity, separate from any future login account. It
+- Customer is a business entity, separate from Account. It
   supports creation, lookup by ID, paginated listing, atomic partial update,
   and logical deactivation. Its current rules include required normalized name
   and email, unique lowercase email, and a required unformatted 11-digit phone.
@@ -91,5 +91,51 @@ Docker must be running for persistence integration tests.
   placed orders. `GET /orders/{id}` retrieves a placed order with its items,
   and `GET /orders` lists order summaries with pagination. Other order
   operations are not implemented.
-- Cart, inventory workflows, authentication, payments, messaging, cloud
-  deployment, and microservices remain deferred until required by their slice.
+- Account domain and persistence are implemented on `feat/customer-registration`.
+  Account stores a normalized login email, a supplied password hash, a role,
+  and a Customer ID required for the `CUSTOMER` role. Login emails and non-null
+  Customer IDs are unique across Accounts. PostgreSQL generates Account
+  creation and update timestamps. Unit and persistence integration tests cover
+  domain rules, storage, email uniqueness, the unique Customer link, and the
+  Customer foreign key.
+- The registration use case and endpoint, password hashing configuration,
+  authentication, and authorization remain unimplemented. Customer email
+  changes do not yet synchronize Account email. The adopted registration and
+  Order access rules are in `docs/decisions.md`.
+- Cart, inventory workflows, payments, messaging, cloud deployment, and
+  microservices remain deferred until required by their slice.
+
+## Mentoring workflow for customer registration
+
+- Give one small exercise at a time, starting with a test. Wait for the user's
+  implementation, review it without changing their files, and let them make
+  corrections before validating and advancing. Provide the proposed test name.
+- Do not implement exercises for the user unless they explicitly request it.
+  Do not commit or push without an explicit request.
+- The first slice, Account domain and persistence, is complete and reviewed.
+  The user reported a successful full suite with 180 tests. No commit or push
+  has been requested. Inform the user when a slice is ready for commit.
+- The next planned slice is password hashing before the registration use case.
+  Choose the encoder before proposing its first small test exercise. Account
+  continues to receive a hash already calculated outside the entity.
+
+## Open customer registration decisions
+
+- Define how Customer email changes keep the login email stored on Account
+  consistent in the same operation. The limit of one Account per Customer and
+  unique Account login emails are already adopted.
+- Define the registration endpoint and response, including the HTTP contract
+  for an email already used by an Account and the behavior for an email that
+  belongs to a Customer without an Account. Duplicate Account emails must be
+  rejected, but the registration HTTP response remains to be defined.
+- Decide how existing Customers without accounts obtain access and how their
+  ownership is verified before an Account is linked.
+- Decide how administrator accounts are created and whether they have a
+  Customer record.
+- Decide whether deactivating a Customer disables its Account.
+- Choose the password encoder and login mechanism in their respective slices;
+  decide when to add email verification and password recovery.
+- Define permissions for Product and Customer endpoints, including the current
+  `POST /customers` and Customer email changes.
+- Choose the HTTP response for a logged-in customer requesting another
+  customer's order while preserving the agreed ownership rule.
