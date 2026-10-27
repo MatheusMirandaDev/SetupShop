@@ -102,6 +102,10 @@ Docker must be running for persistence integration tests.
   authentication, and authorization remain unimplemented. Customer email
   changes do not yet synchronize Account email. The adopted registration and
   Order access rules are in `docs/decisions.md`.
+- Password storage will use Argon2id with an automatically generated salt per
+  hash and a secret pepper stored separately from the database. This decision
+  is adopted but not implemented; its format and secret lifecycle remain to
+  be defined before the first hashing test.
 - Cart, inventory workflows, payments, messaging, cloud deployment, and
   microservices remain deferred until required by their slice.
 
@@ -113,11 +117,15 @@ Docker must be running for persistence integration tests.
 - Do not implement exercises for the user unless they explicitly request it.
   Do not commit or push without an explicit request.
 - The first slice, Account domain and persistence, is complete and reviewed.
-  The user reported a successful full suite with 180 tests. No commit or push
-  has been requested. Inform the user when a slice is ready for commit.
+  The user reported a successful full suite with 180 tests, then committed and
+  pushed the slice. Inform the user when each subsequent slice is ready for
+  commit. New commits and pushes still require an explicit request.
 - The next planned slice is password hashing before the registration use case.
-  Choose the encoder before proposing its first small test exercise. Account
-  continues to receive a hash already calculated outside the entity.
+  Argon2id with automatic salt and a pepper has been chosen. Define how the
+  pepper participates in hashing, the stored format and version identification,
+  and secret configuration and rotation before proposing the first small test
+  exercise. Account continues to receive a hash already calculated outside the
+  entity; do not put the pepper on Account or in its table.
 
 ## Open customer registration decisions
 
@@ -133,8 +141,12 @@ Docker must be running for persistence integration tests.
 - Decide how administrator accounts are created and whether they have a
   Customer record.
 - Decide whether deactivating a Customer disables its Account.
-- Choose the password encoder and login mechanism in their respective slices;
-  decide when to add email verification and password recovery.
+- Define Argon2id parameters, the pepper composition strategy, stored format
+  and version identification, secure pepper generation and configuration,
+  preservation across deployments, and rotation or loss handling. Never commit
+  a real pepper or expose it in logs; keep it outside the password database.
+- Choose the login mechanism and decide when to add email verification and
+  password recovery. Recovery must verify identity and is not implemented yet.
 - Define permissions for Product and Customer endpoints, including the current
   `POST /customers` and Customer email changes.
 - Choose the HTTP response for a logged-in customer requesting another

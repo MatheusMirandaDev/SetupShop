@@ -36,6 +36,11 @@ role, Customer link, and database-managed timestamps. Registration, password
 hashing, authentication, and authorization remain to be implemented. Existing
 Customer email updates do not yet synchronize Account email.
 
+The adopted password hashing design is Argon2id with automatic per-hash salt
+and a secret pepper stored separately from the database. Implementation and
+secret lifecycle details are pending; see the
+[password hashing decision](docs/decisions.md#password-hashing-with-argon2id-and-pepper-planned).
+
 ## Getting started
 
 ### Requirements
