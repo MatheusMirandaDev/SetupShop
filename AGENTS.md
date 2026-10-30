@@ -92,20 +92,25 @@ Docker must be running for persistence integration tests.
   and `GET /orders` lists order summaries with pagination. Other order
   operations are not implemented.
 - Account domain and persistence are implemented on `feat/customer-registration`.
-  Account stores a normalized login email, a supplied password hash, a role,
-  and a Customer ID required for the `CUSTOMER` role. Login emails and non-null
-  Customer IDs are unique across Accounts. PostgreSQL generates Account
-  creation and update timestamps. Unit and persistence integration tests cover
-  domain rules, storage, email uniqueness, the unique Customer link, and the
-  Customer foreign key.
-- The registration use case and endpoint, password hashing configuration,
-  authentication, and authorization remain unimplemented. Customer email
-  changes do not yet synchronize Account email. The adopted registration and
-  Order access rules are in `docs/decisions.md`.
-- Password storage will use Argon2id with an automatically generated salt per
-  hash and a secret pepper stored separately from the database. This decision
-  is adopted but not implemented; its format and secret lifecycle remain to
-  be defined before the first hashing test.
+  Account stores a normalized email, a role, a Customer ID required for the
+  `CUSTOMER` role, and external identity issuer and subject. Issuer and subject
+  are required, non-blank, limited to 255 characters each, and preserved without
+  normalization. The pair is unique; neither field is individually unique.
+  Emails and non-null Customer IDs remain unique across Accounts. PostgreSQL
+  generates creation and update timestamps. Tests cover domain rules, storage,
+  email uniqueness, the unique Customer link, the Customer foreign key,
+  duplicate external identities, and distinct users from the same issuer.
+- V7 adapts accounts to external identity and removes `password_hash`, leaving
+  V6 unchanged. V7 requires an empty accounts table, as confirmed for the local
+  database; it does not migrate existing password accounts to external users.
+- The first version will support Google login only, through Auth0. Local
+  passwords, Argon2id, pepper, password recovery, and account linking are outside
+  this version. Additional login methods will be considered only when needed.
+  Identify an external identity by the validated Auth0 issuer and subject, not
+  by email. Keep Customer business data and application authorization local.
+- Registration/onboarding, authentication, and authorization remain
+  unimplemented. The adopted identity and Order access rules are in
+  `docs/decisions.md`. Never edit applied migrations, including V6 and V7.
 - Cart, inventory workflows, payments, messaging, cloud deployment, and
   microservices remain deferred until required by their slice.
 
@@ -120,33 +125,33 @@ Docker must be running for persistence integration tests.
   The user reported a successful full suite with 180 tests, then committed and
   pushed the slice. Inform the user when each subsequent slice is ready for
   commit. New commits and pushes still require an explicit request.
-- The next planned slice is password hashing before the registration use case.
-  Argon2id with automatic salt and a pepper has been chosen. Define how the
-  pepper participates in hashing, the stored format and version identification,
-  and secret configuration and rotation before proposing the first small test
-  exercise. Account continues to receive a hash already calculated outside the
-  entity; do not put the pepper on Account or in its table.
+- The external identity adaptation slice is complete and reviewed. The user
+  reported a successful full suite with 188 tests. Documentation reflects this
+  slice; no commit or push for it has been requested yet.
+- The initial external identity test and validation exercises are complete.
+  Continue toward Google login through Auth0 with one small exercise at a time,
+  starting with a test for the next behavior. Account lookup by issuer and
+  subject, access token validation, and onboarding are not implemented yet.
 
 ## Open customer registration decisions
 
-- Define how Customer email changes keep the login email stored on Account
-  consistent in the same operation. The limit of one Account per Customer and
-  unique Account login emails are already adopted.
-- Define the registration endpoint and response, including the HTTP contract
-  for an email already used by an Account and the behavior for an email that
-  belongs to a Customer without an Account. Duplicate Account emails must be
-  rejected, but the registration HTTP response remains to be defined.
+- Define the purpose and synchronization of Account and Customer emails with
+  the provider profile, including how to handle provider email changes and
+  existing local email conflicts. Account email uniqueness was preserved during
+  external identity adaptation; settle its role before onboarding. Keep the
+  adopted limit of one Account per Customer.
+- Define the onboarding endpoint and response, collection of required business
+  data such as phone, and atomic local creation of Customer and Account. Auth0
+  identity creation is outside the local database transaction.
 - Decide how existing Customers without accounts obtain access and how their
   ownership is verified before an Account is linked.
 - Decide how administrator accounts are created and whether they have a
   Customer record.
 - Decide whether deactivating a Customer disables its Account.
-- Define Argon2id parameters, the pepper composition strategy, stored format
-  and version identification, secure pepper generation and configuration,
-  preservation across deployments, and rotation or loss handling. Never commit
-  a real pepper or expose it in logs; keep it outside the password database.
-- Choose the login mechanism and decide when to add email verification and
-  password recovery. Recovery must verify identity and is not implemented yet.
+- Define Auth0 tenant and application configuration, API audience, frontend
+  login flow, and validation of access tokens. Define the provider email
+  verification requirements for onboarding. Do not implement local password
+  hashing or recovery for the Google-only version.
 - Define permissions for Product and Customer endpoints, including the current
   `POST /customers` and Customer email changes.
 - Choose the HTTP response for a logged-in customer requesting another

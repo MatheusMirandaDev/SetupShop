@@ -158,29 +158,61 @@ This document records only technical decisions already adopted by SetupShop.
 
 ## Account domain and persistence
 
-- **Context:** Credentials and permissions need storage separate from Customer
-  business data before registration and authentication are implemented.
+- **Context:** Identity and permissions need storage separate from Customer
+  business data before registration and authentication are implemented. The
+  initial password-based persistence slice was adapted to external identity.
 - **Decision:** Persist Account in `accounts`, introduced by Flyway migration
-  `V6`, through a framework-independent `AccountRepository` contract and a JPA
-  adapter. Store a generated ID, login email, supplied password hash, role,
-  Customer ID, and creation and update timestamps. The domain trims and
-  lowercases email, checks its format and 255-character limit, rejects missing
-  or blank password hashes and missing roles, and requires positive Customer
-  IDs when provided. Store roles as enum names (`CUSTOMER` or `ADMIN`). Require
+  `V6` and adapted by `V7`, through a framework-independent `AccountRepository`
+  contract and a JPA adapter. Store a generated ID, email, role, Customer ID,
+  issuer, subject, and creation and update timestamps. The domain trims and
+  lowercases email and checks its format and 255-character limit. Require
+  non-blank issuer and subject, each at most 255 characters, and preserve their
+  exact values without normalization. Enforce uniqueness of the pair
+  `(issuer, subject)`, allowing different subjects from the same issuer. Reject
+  missing roles and require positive Customer IDs when provided. Store roles
+  as enum names (`CUSTOMER` or `ADMIN`). Require
   a Customer ID for `CUSTOMER` accounts. Enforce unique emails, unique Customer
   links, a Customer foreign key, and the conditional Customer requirement in
   PostgreSQL. Generate timestamps with database defaults and the existing
   update trigger function.
-- **Consequence:** Each Customer can have at most one Account. The persistence
-  slice accepts a hash already calculated outside Account; it does not yet
-  provide registration, password hashing, or login. The nullable Customer link
-  does not settle how administrator accounts are created or linked to Customers.
+- **Consequence:** Each Customer can have at most one Account. Account no longer
+  stores a password hash. The persistence slice stores external identity data
+  but does not authenticate tokens, look up Accounts by issuer and subject, or
+  provide onboarding. Email uniqueness remains implemented while its role in
+  onboarding and provider email changes remains open. The nullable Customer
+  link does not settle how administrators are created or linked to Customers.
+  V7 leaves V6 unchanged, adds required identity columns and composite
+  uniqueness, and drops `password_hash`. It requires an empty accounts table,
+  as confirmed for the local database; populated databases need a separately
+  designed identity transition before applying this migration. Never fabricate
+  issuer or subject values for existing users or infer identity from email.
 
-## Password hashing with Argon2id and pepper (planned)
+## Google-only login through Auth0 (planned)
 
-- **Context:** Account persistence currently accepts a supplied hash. The next
-  slice must calculate and verify password hashes before registration is
-  implemented, with additional protection if only the database is compromised.
+- **Context:** SetupShop may be deployed for a small retailer. The first login
+  version should support a narrow operational scope while demonstrating
+  OAuth2/OpenID Connect integration and application authorization.
+- **Decision:** Support Google as the only login method through Auth0 in the
+  first version. Defer local passwords, password hashing, pepper, password
+  recovery, and linking multiple login methods. Reconsider additional methods
+  only when required. Identify the local Account using the issuer and subject
+  of a validated Auth0 identity, never by matching email alone. The API will
+  validate access tokens intended for it. Customer business data, local roles,
+  and Order ownership checks remain SetupShop responsibilities.
+- **Consequence:** Account domain and persistence are adapted to external
+  identity through V7; V6 remains unchanged.
+  Google authentication does not replace onboarding or supply all required
+  Customer business data. Local Customer and Account creation must remain
+  atomic, but cannot share a database transaction with Auth0. Tenant settings,
+  API audience, frontend flow, onboarding endpoints, email handling, and access
+  for existing Customers remain to be defined. Authentication is not implemented
+  yet. This decision supersedes the password hashing plan below.
+
+## Password hashing with Argon2id and pepper (superseded)
+
+- **Context:** The initial Account persistence slice accepted a supplied hash.
+  The former plan was to calculate and verify password hashes before
+  registration, with additional protection if only the database was compromised.
 - **Decision:** Use Argon2id with a salt automatically generated by the encoder
   for each hash, plus a secret pepper. Store the salt and algorithm parameters
   in the encoded representation; a separate salt column is not needed. Generate
@@ -197,28 +229,29 @@ This document records only technical decisions already adopted by SetupShop.
   require password resets. Password recovery must verify user identity and
   remains unimplemented. No hashing or pepper configuration is implemented yet.
 - **Reference:** [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+- **Status:** Superseded before implementation by Google-only login through
+  Auth0. The choices above are historical and are not requirements for the
+  first login version.
 
 ## Customer account registration (planned)
 
 - **Context:** `Customer` represents business data, while a login account
   represents credentials and permissions. A person should enter their data
   once when registering.
-- **Decision:** Keep `Customer` and `Account` as separate models. Customer
-  registration accepts name, email, phone, and password, then creates both
-  records in one transaction. Link the account to the customer by customer ID,
-  not by email. Keep name and phone on Customer instead of duplicating them on
-  Account. Assign the `CUSTOMER` role on the server and store only a password
-  hash. Each Customer may have at most one Account, and login emails must be
-  unique across Accounts. Registration with an email already used by an Account
-  must be rejected with an indication that the email is already in use.
-  CPF is outside the first registration slice. Customer registration and
-  authentication precede a real payment integration.
-- **Consequence:** Registration cannot leave only one of the records persisted.
-  Changing a customer's email must update the email used for login in the same
-  operation. Account storage is implemented. The registration use case and
-  endpoints, password hashing configuration, and Customer-to-Account email
-  synchronization remain to be implemented. Access for existing Customers
-  without Accounts and the registration HTTP error contract remain open.
+- **Decision:** Keep `Customer` and `Account` as separate models. Onboarding
+  follows Google authentication through Auth0, collects required business data,
+  and creates the local Customer and Account in one transaction. Link Account
+  to Customer by Customer ID and to the external identity by issuer and subject,
+  not by email. Keep name and phone on Customer. Assign the `CUSTOMER` role on
+  the server. Each Customer may have at most one Account. CPF is outside the
+  first slice. Registration and authentication precede real payment integration.
+- **Consequence:** Onboarding cannot leave only one of the local records
+  persisted. Account storage now supports issuer and subject without a password
+  hash; email uniqueness remains enforced. The former plan
+  to accept a password at registration is superseded. Provider and local email
+  synchronization, handling of existing email conflicts and Customers without
+  Accounts, and the onboarding HTTP contract remain open. Matching email alone
+  must not grant ownership of an existing Customer.
 
 ## Order access policy (planned)
 

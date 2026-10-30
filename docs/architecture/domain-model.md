@@ -44,14 +44,17 @@ classDiagram
         <<aggregateroot>>
         -Long id
         -String email
-        -String passwordHash
         -Long customerId
         -AccountRole role
+        -String issuer
+        -String subject
         -Instant createdAt
         -Instant updatedAt
     }
-    note for Account "Login email is required, normalized to lowercase, and unique;
-        A non-blank password hash and a role are required;
+    note for Account "Email is required, normalized to lowercase, and unique;
+        A role is required;
+        Issuer and subject are non-blank and limited to 255 characters each;
+        Issuer and subject are preserved exactly and their pair is unique;
         CUSTOMER accounts require a Customer ID;
         A supplied Customer ID must be positive and reference an existing Customer;
         Each Customer can have at most one Account;
@@ -98,13 +101,15 @@ classDiagram
     Product "1" <-- "0..*" OrderItem: references (productId)
 ``` 
 
-Account domain and persistence are implemented. Registration, password hashing,
+Account domain and persistence are implemented. Registration,
 authentication, and authorization remain planned. The optional Customer link in
 the diagram reflects the current mapping; `CUSTOMER` accounts always require
 that link. Administrator creation and Customer linkage rules remain open.
 
-The adopted hashing design uses Argon2id with automatic salt and a secret
-pepper. Hashing and verification will happen outside Account. The pepper is
-kept outside the database and is not an Account field. The encoding format and
-secret lifecycle remain to be defined; see the
-[password hashing decision](../decisions.md#password-hashing-with-argon2id-and-pepper-planned).
+The diagram shows the current Account after V7: issuer and subject identify the
+external identity, and the password hash field has been removed. V7 assumes an
+empty accounts table and does not convert existing password accounts. The
+adopted first login version uses Google only through Auth0. Access token
+validation and login remain unimplemented. Local password hashing and pepper
+are outside this version. See the
+[Google login decision](../decisions.md#google-only-login-through-auth0-planned).

@@ -25,21 +25,24 @@ later catalog changes do not alter placed orders.
 | Products | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Customers | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Orders | Place an order, get an order by ID, and list orders with pagination |
-| Accounts | Domain model and persistence with unique login email and Customer link; no HTTP endpoints yet |
+| Accounts | Domain model and persistence with unique external identity, email, and Customer link; no HTTP endpoints yet |
 
 Products and customers remain readable after logical deactivation. Both must be
 active to participate in a new order. Customer records are business entities;
 they are separate from Accounts.
 
-Account persistence stores a normalized login email, a supplied password hash,
-role, Customer link, and database-managed timestamps. Registration, password
-hashing, authentication, and authorization remain to be implemented. Existing
+Account persistence stores a normalized email, role, Customer link, external
+identity issuer and subject, and database-managed timestamps. The issuer and
+subject pair is unique, and both values are preserved without normalization.
+Local passwords are no longer stored. Registration,
+authentication, and authorization remain to be implemented. Existing
 Customer email updates do not yet synchronize Account email.
 
-The adopted password hashing design is Argon2id with automatic per-hash salt
-and a secret pepper stored separately from the database. Implementation and
-secret lifecycle details are pending; see the
-[password hashing decision](docs/decisions.md#password-hashing-with-argon2id-and-pepper-planned).
+The first login version will use Google only through Auth0. Local passwords,
+Argon2id, pepper, and account linking are outside that version. Account domain
+and persistence are ready to store external identities; token validation and
+the login flow are not implemented yet. See the
+[Google login decision](docs/decisions.md#google-only-login-through-auth0-planned).
 
 ## Getting started
 
@@ -345,6 +348,11 @@ uses `ddl-auto: validate` rather than creating or modifying tables.
 | `V4` | Create orders |
 | `V5` | Create order items |
 | `V6` | Create accounts with unique email and Customer link, foreign key, and timestamps |
+| `V7` | Add required issuer and subject with composite uniqueness and remove password hashes |
+
+V7 requires `accounts` to be empty when it runs, as confirmed for the current
+local database. It does not convert existing password accounts into external
+identities. Applied migrations must remain unchanged.
 
 Order items store product IDs, quantities, and captured unit prices. Orders
 store their calculated totals and start with status `CREATED`. Database defaults
@@ -372,6 +380,10 @@ The suite covers domain rules and use cases with unit tests, HTTP behavior with
 MockMvc, and persistence with Testcontainers, PostgreSQL, and Flyway. GitHub
 Actions runs `./mvnw test` on pushes and pull requests using Java 21; the CI
 runner needs Docker for Testcontainers.
+
+Account tests cover external identity validation, storage and retrieval,
+duplicate identities, and different users sharing the same issuer, as well as
+email uniqueness and Customer linkage constraints.
 
 ## Documentation and future scope
 
