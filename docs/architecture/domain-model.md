@@ -101,15 +101,20 @@ classDiagram
     Product "1" <-- "0..*" OrderItem: references (productId)
 ``` 
 
-Account domain and persistence are implemented. Registration,
-authentication, and authorization remain planned. The optional Customer link in
+Account domain and persistence and JWT authentication are implemented.
+Registration, identity-to-Account linkage, and role/ownership authorization
+remain planned. The optional Customer link in
 the diagram reflects the current mapping; `CUSTOMER` accounts always require
 that link. Administrator creation and Customer linkage rules remain open.
 
 The diagram shows the current Account after V7: issuer and subject identify the
 external identity, and the password hash field has been removed. V7 assumes an
 empty accounts table and does not convert existing password accounts. The
-adopted first login version uses Google only through Auth0. Access token
-validation and login remain unimplemented. Local password hashing and pepper
+first login version uses Google only through Auth0. The API validates access
+tokens and `GET /auth/me` returns issuer and subject from the JWT. This does not
+resolve a local Account or Customer. All requests currently require
+authentication; local role and Order ownership checks remain unimplemented.
+Local password hashing and pepper
 are outside this version. See the
-[Google login decision](../decisions.md#google-only-login-through-auth0-planned).
+[Google login decision](../decisions.md#google-only-login-through-auth0) and
+[authentication setup](../authentication.md).

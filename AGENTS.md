@@ -40,11 +40,17 @@ OpenAPI/Swagger, JUnit, Mockito, and Testcontainers.
 ## Test commands
 
 Docker must be running for persistence integration tests.
+Tests do not require loading `.env` or configuring Auth0 environment variables.
+The four controller test classes supply fictitious issuer and audience values
+through `@TestPropertySource`. Authentication controller tests replace the
+decoder with a mock and do not require real tokens or a live Auth0 connection.
+Running the application still requires `AUTH0_ISSUER_URI` and `AUTH0_AUDIENCE`.
 
 ```bash
 ./mvnw test
 ./mvnw -Dtest=ClassName test
 ./mvnw -Dtest=ClassName#methodName test
+env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
 ```
 
 ## Continuous integration
@@ -52,7 +58,8 @@ Docker must be running for persistence integration tests.
 - `.github/workflows/ci.yml` runs on pushes and pull requests.
 - It sets up Java 21 and runs `./mvnw test`, including persistence
   integration tests with Testcontainers and PostgreSQL. The runner needs
-  Docker for those tests.
+  Docker for those tests. Auth0 environment variables and credentials are not
+  required by the test suite.
 
 ## Before a commit
 
@@ -103,14 +110,23 @@ Docker must be running for persistence integration tests.
 - V7 adapts accounts to external identity and removes `password_hash`, leaving
   V6 unchanged. V7 requires an empty accounts table, as confirmed for the local
   database; it does not migrate existing password accounts to external users.
-- The first version will support Google login only, through Auth0. Local
+- The first login version supports Google only, through Auth0. Local
   passwords, Argon2id, pepper, password recovery, and account linking are outside
   this version. Additional login methods will be considered only when needed.
   Identify an external identity by the validated Auth0 issuer and subject, not
   by email. Keep Customer business data and application authorization local.
-- Registration/onboarding, authentication, and authorization remain
-  unimplemented. The adopted identity and Order access rules are in
-  `docs/decisions.md`. Never edit applied migrations, including V6 and V7.
+- JWT Bearer authentication is implemented using Spring Security Resource
+  Server. Configure issuer and audience through `AUTH0_ISSUER_URI` and
+  `AUTH0_AUDIENCE`. Spring validates token signature, issuer, audience, and
+  validity times. All requests require authentication, including documentation
+  endpoints. `GET /auth/me` returns issuer and subject from the authenticated
+  JWT without consulting Account or Customer.
+- Registration/onboarding, Account lookup by external identity, and role and
+  ownership authorization remain unimplemented. Order placement still accepts
+  the request Customer ID, and reads are not filtered by the authenticated
+  Customer. Authentication alone does not enforce the adopted Order access
+  policy. See `docs/decisions.md` and `docs/authentication.md`. Never edit
+  applied migrations, including V6 and V7.
 - Cart, inventory workflows, payments, messaging, cloud deployment, and
   microservices remain deferred until required by their slice.
 
@@ -126,12 +142,26 @@ Docker must be running for persistence integration tests.
   pushed the slice. Inform the user when each subsequent slice is ready for
   commit. New commits and pushes still require an explicit request.
 - The external identity adaptation slice is complete and reviewed. The user
-  reported a successful full suite with 188 tests. Documentation reflects this
-  slice; no commit or push for it has been requested yet.
-- The initial external identity test and validation exercises are complete.
-  Continue toward Google login through Auth0 with one small exercise at a time,
-  starting with a test for the next behavior. Account lookup by issuer and
-  subject, access token validation, and onboarding are not implemented yet.
+  reported a successful full suite with 188 tests and subsequently finalized
+  the commit. Do not infer authorization for further commits or pushes.
+- The authentication slice is implemented and reviewed. The user reported a
+  successful full suite with 191 tests, including a run with both Auth0
+  environment variables removed, and manually verified `/auth/me` returns
+  200 with a fresh Auth0 access token and 401 without authentication.
+  `AuthenticationControllerTest` covers missing tokens, decoder rejection,
+  and the identity response using a mocked decoder; it does not independently
+  exercise cryptographic or claim validation with a real decoder.
+- Product, Customer, and Order controller tests disable MockMvc filters to
+  preserve their HTTP/controller scope. Authentication tests keep filters active
+  and import the real SecurityConfig. These controller tests do not establish
+  authorization coverage for the business endpoints.
+- The user explicitly prioritized authentication before Account/Customer
+  linkage. Continue with one small test exercise for the next behavior after
+  closing the authentication slice. Linkage and onboarding remain pending.
+- The authentication slice is ready for commit after the documentation update.
+  No commit or push has been requested. The successful local run without Auth0
+  variables verifies this configuration dependency; a GitHub Actions result
+  has not been verified in this session.
 
 ## Open customer registration decisions
 
@@ -148,10 +178,11 @@ Docker must be running for persistence integration tests.
 - Decide how administrator accounts are created and whether they have a
   Customer record.
 - Decide whether deactivating a Customer disables its Account.
-- Define Auth0 tenant and application configuration, API audience, frontend
-  login flow, and validation of access tokens. Define the provider email
-  verification requirements for onboarding. Do not implement local password
-  hashing or recovery for the Google-only version.
+- The development Auth0 tenant, API audience, and Postman PKCE client are
+  configured; token validation is implemented. Define production configuration,
+  the future frontend login flow, and provider email verification requirements
+  for onboarding. Do not implement local password hashing or recovery for the
+  Google-only version.
 - Define permissions for Product and Customer endpoints, including the current
   `POST /customers` and Customer email changes.
 - Choose the HTTP response for a logged-in customer requesting another

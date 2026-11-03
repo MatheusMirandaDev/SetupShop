@@ -187,7 +187,7 @@ This document records only technical decisions already adopted by SetupShop.
   designed identity transition before applying this migration. Never fabricate
   issuer or subject values for existing users or infer identity from email.
 
-## Google-only login through Auth0 (planned)
+## Google-only login through Auth0
 
 - **Context:** SetupShop may be deployed for a small retailer. The first login
   version should support a narrow operational scope while demonstrating
@@ -196,17 +196,60 @@ This document records only technical decisions already adopted by SetupShop.
   first version. Defer local passwords, password hashing, pepper, password
   recovery, and linking multiple login methods. Reconsider additional methods
   only when required. Identify the local Account using the issuer and subject
-  of a validated Auth0 identity, never by matching email alone. The API will
-  validate access tokens intended for it. Customer business data, local roles,
+  of a validated Auth0 identity, never by matching email alone. The API
+  validates access tokens intended for it using Spring Security OAuth2 Resource
+  Server, configured by `AUTH0_ISSUER_URI` and `AUTH0_AUDIENCE`. Signature,
+  issuer, audience, and validity times are validated. Customer business data, local roles,
   and Order ownership checks remain SetupShop responsibilities.
 - **Consequence:** Account domain and persistence are adapted to external
   identity through V7; V6 remains unchanged.
   Google authentication does not replace onboarding or supply all required
   Customer business data. Local Customer and Account creation must remain
-  atomic, but cannot share a database transaction with Auth0. Tenant settings,
-  API audience, frontend flow, onboarding endpoints, email handling, and access
-  for existing Customers remain to be defined. Authentication is not implemented
-  yet. This decision supersedes the password hashing plan below.
+  atomic, but cannot share a database transaction with Auth0. Development uses
+  `https://setupshop-dev.us.auth0.com/` as issuer and
+  `https://api.setupshop.example` as API audience. A Native Auth0 application
+  represents Postman, using Authorization Code with PKCE (S256), a registered
+  Postman callback, and explicit user-delegated access to the API. Google OAuth
+  credentials are configured on the Auth0 Google connection. They are not
+  credentials for the API or the Postman client. There is no frontend yet.
+  Production settings, frontend flow, onboarding endpoints, email handling,
+  and access for existing Customers remain open. This decision supersedes
+  the password hashing plan below. See [the setup guide](authentication.md).
+
+## Authenticated identity endpoint and initial security policy
+
+- **Context:** The first authentication slice needs to verify real access tokens
+  before linking external users to local business records.
+- **Decision:** Require authentication for all requests with the current
+  SecurityFilterChain, including documentation routes. `GET /auth/me` returns
+  only issuer and subject from `@AuthenticationPrincipal Jwt`, using a response
+  record. It does not query or create Account or Customer. Missing or rejected
+  tokens return 401 through Spring Security. The controller JSON error contract
+  is not applied to authentication failures.
+- **Consequence:** A valid identity can access the endpoint before onboarding.
+  Global authentication does not enforce local roles, Customer activation, or
+  Order ownership. These checks and the replacement of request-supplied
+  Customer IDs remain future slices. The current OpenAPI configuration does not
+  provide Swagger UI login or a Bearer authorization control.
+
+## Controller test boundaries with security
+
+- **Context:** Adding Spring Security causes existing MockMvc requests to be
+  intercepted before controller validation and use case calls.
+- **Decision:** Product, Customer, and Order controller tests disable MockMvc
+  filters to retain their HTTP contract scope. AuthenticationControllerTest
+  imports SecurityConfig, keeps filters enabled, and mocks JwtDecoder to cover
+  missing/rejected tokens and authenticated identity responses without Auth0.
+  All four controller test classes provide fictitious issuer and audience
+  values through `@TestPropertySource`, independently of the local `.env`.
+- **Consequence:** These tests do not establish role/ownership coverage for
+  business endpoints or independently verify real decoder claim/signature
+  validation. Manual development checks confirmed 200 with a fresh Auth0 access
+  token and 401 with no token. The user reported 191 passing tests in the full
+  local suite with `AUTH0_ISSUER_URI` and `AUTH0_AUDIENCE` removed from the
+  process environment. The workflow does not need to define these variables
+  for tests. This local check does not establish a successful GitHub Actions
+  run. Application startup still requires real issuer and audience settings.
 
 ## Password hashing with Argon2id and pepper (superseded)
 
@@ -265,4 +308,6 @@ This document records only technical decisions already adopted by SetupShop.
   authenticated account instead of trusting a customer ID in the request.
   Order detail must check ownership, and paginated listing must filter by
   ownership before calculating page content and totals. These rules are agreed
-  but are not enforced by the current API yet.
+  but role and ownership checks are not enforced by the current API yet.
+  The authentication requirement for unauthenticated callers is already
+  enforced by the global security configuration.

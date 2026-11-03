@@ -12,6 +12,7 @@ later catalog changes do not alter placed orders.
 
 - [Implemented scope](#implemented-scope)
 - [Getting started](#getting-started)
+- [Authentication](#authentication)
 - [API](#api)
 - [Architecture](#architecture)
 - [Data and migrations](#data-and-migrations)
@@ -26,6 +27,7 @@ later catalog changes do not alter placed orders.
 | Customers | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Orders | Place an order, get an order by ID, and list orders with pagination |
 | Accounts | Domain model and persistence with unique external identity, email, and Customer link; no HTTP endpoints yet |
+| Authentication | Google login through Auth0 and authenticated identity lookup with `GET /auth/me` |
 
 Products and customers remain readable after logical deactivation. Both must be
 active to participate in a new order. Customer records are business entities;
@@ -34,15 +36,16 @@ they are separate from Accounts.
 Account persistence stores a normalized email, role, Customer link, external
 identity issuer and subject, and database-managed timestamps. The issuer and
 subject pair is unique, and both values are preserved without normalization.
-Local passwords are no longer stored. Registration,
-authentication, and authorization remain to be implemented. Existing
+Local passwords are no longer stored. Registration, linkage of the authenticated
+identity to local records, and role/ownership authorization remain pending. Existing
 Customer email updates do not yet synchronize Account email.
 
-The first login version will use Google only through Auth0. Local passwords,
+The first login version uses Google only through Auth0. Local passwords,
 Argon2id, pepper, and account linking are outside that version. Account domain
-and persistence are ready to store external identities; token validation and
-the login flow are not implemented yet. See the
-[Google login decision](docs/decisions.md#google-only-login-through-auth0-planned).
+and persistence store external identities. Spring Security validates Auth0
+access tokens, and `/auth/me` returns the authenticated issuer and subject.
+There is no frontend yet; the development login flow uses Postman and a browser.
+See the [authentication guide](docs/authentication.md).
 
 ## Getting started
 
@@ -56,11 +59,22 @@ Docker runs PostgreSQL locally and is also required by the persistence tests.
 
 ### Configure and run
 
-1. Copy the environment template and replace its placeholder database values:
+1. Copy the environment template and replace its placeholder database values.
+   Configure the Auth0 issuer and API audience for your environment as well:
 
    ```bash
    cp .env.example .env
    ```
+
+   The current development values are:
+
+   ```dotenv
+   AUTH0_ISSUER_URI=https://setupshop-dev.us.auth0.com/
+   AUTH0_AUDIENCE=https://api.setupshop.example
+   ```
+
+   These values are public configuration. Keep the trailing slash on the
+   issuer. The audience is the API Identifier in Auth0, not its deployment URL.
 
 2. Start PostgreSQL:
 
@@ -80,13 +94,61 @@ Docker runs PostgreSQL locally and is also required by the persistence tests.
 The API runs at `http://localhost:8080` by default. Flyway applies migrations
 on startup, and Hibernate validates the resulting schema. Keep `.env` local;
 it may contain database credentials.
+The `.env` file is not loaded automatically by `spring-boot:run`; export its
+variables in the same terminal as shown above.
 
 ### API documentation
 
 - [Swagger UI](http://localhost:8080/swagger-ui/index.html)
 - [OpenAPI JSON](http://localhost:8080/v3/api-docs)
 
-These links are available while the application is running locally.
+These routes also require authentication under the current security policy.
+Opening Swagger UI in an unauthenticated browser is not a configured login
+flow. Swagger UI has no configured OAuth2 login or Bearer authorization control
+yet; use Postman for authenticated calls.
+
+## Authentication
+
+All requests require an Auth0 access token in the HTTP header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+The API validates signature, issuer, audience, and token validity times. Use
+the access token intended for the SetupShop API; the ID token is for the login
+client. The [authentication guide](docs/authentication.md) explains the Auth0
+setup and the Postman Authorization Code + PKCE configuration.
+
+For the curl examples below, read a fresh access token into a local shell
+variable without putting it directly in a command:
+
+```bash
+read -rs -p 'Access token: ' ACCESS_TOKEN
+printf '\n'
+```
+
+Inspect the authenticated identity:
+
+```bash
+curl -i http://localhost:8080/auth/me \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+```
+
+An illustrative `200 OK` body is:
+
+```json
+{
+  "issuer": "https://setupshop-dev.us.auth0.com/",
+  "subject": "google-oauth2|example-user"
+}
+```
+
+The same call without a token returns `401 Unauthorized`. This endpoint does
+not look up Account or Customer. The current policy requires authentication
+globally but does not enforce local roles or Order ownership. Order placement
+still accepts `customerId` from the request, and Order reads are not restricted
+to the authenticated Customer yet.
 
 ## API
 
@@ -94,6 +156,7 @@ These links are available while the application is running locally.
 
 | Method | Path | Result |
 | --- | --- | --- |
+| `GET` | `/auth/me` | Return the authenticated issuer and subject (`200`) |
 | `POST` | `/products` | Create a product (`201`) |
 | `GET` | `/products/{id}` | Get a product (`200`) |
 | `GET` | `/products?page=0&size=20` | List products (`200`) |
@@ -118,6 +181,7 @@ Create a product with a required name and price. Description is optional:
 
 ```http
 POST /products
+Authorization: Bearer <access_token>
 Content-Type: application/json
 ```
 
@@ -131,6 +195,7 @@ Content-Type: application/json
 
 ```bash
 curl -i -X POST http://localhost:8080/products \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H 'Content-Type: application/json' \
   -d '{"name":"Keyboard AULA F75","description":"Wireless mechanical keyboard","price":300.00}'
 ```
@@ -164,6 +229,7 @@ Create a customer with a name, email, and an unformatted 11-digit phone number:
 
 ```http
 POST /customers
+Authorization: Bearer <access_token>
 Content-Type: application/json
 ```
 
@@ -177,6 +243,7 @@ Content-Type: application/json
 
 ```bash
 curl -i -X POST http://localhost:8080/customers \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H 'Content-Type: application/json' \
   -d '{"name":"Matheus Miranda","email":"matheus.miranda@example.com","phone":"61999999999"}'
 ```
@@ -215,6 +282,7 @@ the request.
 
 ```http
 POST /orders
+Authorization: Bearer <access_token>
 Content-Type: application/json
 ```
 
@@ -232,6 +300,7 @@ With existing active IDs, the same request can be sent from a terminal:
 
 ```bash
 curl -i -X POST http://localhost:8080/orders \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H 'Content-Type: application/json' \
   -d '{"customerId":1,"items":[{"productId":1,"quantity":2},{"productId":2,"quantity":3}]}'
 ```
@@ -261,7 +330,8 @@ catalog prices change later.
 Retrieve a placed order by its ID:
 
 ```bash
-curl -i http://localhost:8080/orders/1
+curl -i http://localhost:8080/orders/1 \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 
 `GET /orders/{id}` returns the recorded order, including its items, captured
@@ -271,7 +341,8 @@ exists and `404 Not Found` when it does not.
 List orders in ascending ID order:
 
 ```bash
-curl -i 'http://localhost:8080/orders?page=0&size=20'
+curl -i 'http://localhost:8080/orders?page=0&size=20' \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 
 An illustrative `200 OK` response with one order is:
@@ -296,20 +367,24 @@ and their captured prices. Invalid page or size values return `400 Bad Request`.
 | --- | --- |
 | `201` | Order created |
 | `400` | Invalid request or domain input |
+| `401` | Missing or invalid access token |
 | `404` | Customer or product not found |
 | `409` | Customer or product inactive |
 
 ### Validation and errors
 
-Errors return a timestamp, HTTP status, reason, message, and request path.
+Controller error responses return a timestamp, HTTP status, reason, message, and request path.
 Request validation errors also include a `fieldErrors` map. The complete request
 and response schemas are available in Swagger UI.
+Authentication failures are handled by Spring Security and do not currently
+follow that JSON error contract. The authentication tests assert HTTP 401
+without requiring an error body.
 
 ## Architecture
 
 The project is organized by business feature. `product`, `customer`, and
 `order` each separate business rules, orchestration, and framework code.
-`account` currently contains the domain and persistence slice:
+`account` contains the domain, persistence, and authentication HTTP endpoint:
 
 ```text
 src/main/java/br/com/setupshop/
@@ -317,7 +392,9 @@ src/main/java/br/com/setupshop/
 ├── customer/
 ├── account/
 │   ├── domain/                  # Account, role, repository contract
-│   └── infrastructure/persistence/ # JPA repository and adapter
+│   └── infrastructure/
+│       ├── persistence/         # JPA repository and adapter
+│       └── web/                 # Authentication controller and identity DTO
 ├── order/
 │   ├── domain/                  # Models, invariants, repository contract
 │   ├── application/usecase/     # Commands, order placement, lookup, and listing
@@ -364,7 +441,7 @@ PostgreSQL defaults and an update trigger.
 
 ## Tests and CI
 
-Run the full suite with Docker available:
+Run the full suite with Docker available. Tests do not require loading `.env`:
 
 ```bash
 ./mvnw test
@@ -380,17 +457,39 @@ The suite covers domain rules and use cases with unit tests, HTTP behavior with
 MockMvc, and persistence with Testcontainers, PostgreSQL, and Flyway. GitHub
 Actions runs `./mvnw test` on pushes and pull requests using Java 21; the CI
 runner needs Docker for Testcontainers.
+The four controller test classes use `@TestPropertySource` with fictitious
+Auth0 issuer and audience values. No Auth0 environment variables, production
+login, or access token are needed by automated tests. The user reported 191
+tests passing with both Auth0 variables removed using:
+
+```bash
+env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
+```
+
+This verifies local execution without those variables; a GitHub Actions run
+has not been verified in this session. Running the application still requires
+the real environment configuration described above.
 
 Account tests cover external identity validation, storage and retrieval,
 duplicate identities, and different users sharing the same issuer, as well as
 email uniqueness and Customer linkage constraints.
 
+`AuthenticationControllerTest` keeps security filters active and replaces
+`JwtDecoder` with a mock. It covers 401 for missing/rejected tokens and the
+200 identity response for a token accepted by the decoder. It does not
+independently test the real decoder's signature, issuer, audience, or time
+validation. Product, Customer, and Order controller tests use
+`@AutoConfigureMockMvc(addFilters = false)` to test their HTTP contracts;
+they do not verify security rules. The user also manually verified `/auth/me`
+against Auth0 with a fresh token (200) and without authentication (401).
+
 ## Documentation and future scope
 
 Swagger UI documents the current HTTP contract. The domain model and technical
-decisions record the design behind it. Customer registration and authentication
-are planned after the completed Account domain and persistence slice. The
-planned Order access policy is not yet enforced. Cart, inventory workflows,
+decisions record the design behind it. JWT authentication and external identity
+persistence are implemented. Customer onboarding and Account/Customer linkage
+remain planned. The Order access policy's role and ownership rules are not yet
+enforced; unauthenticated requests are rejected. Cart, inventory workflows,
 payment, messaging, and cloud deployment remain deferred. The current Order
 API supports placement, lookup by ID, and paginated listing.
 Other order operations have not been added yet.
