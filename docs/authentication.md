@@ -23,6 +23,14 @@ capability is not yet connected to the HTTP authentication flow.
 returns `Optional<Account>`. The persistence adapter delegates to Spring Data
 to match both values exactly, preserving their stored representation.
 
+`GetAccountByExternalIdentityUseCase.execute(String issuer, String subject)`
+uses that repository contract to return the Account or throw
+`AccountNotFoundException` with the message
+`Account not found for external identity`. It is a Spring service with a
+read-only transaction and accepts plain strings rather than JWT or HTTP types.
+It is not yet called by a controller; no HTTP status has been assigned to this
+exception.
+
 When integrated into an application flow, a found Account can supply the
 local role and Customer ID. An empty result means there is no local Account
 for that identity and onboarding still needs to be handled. The lookup itself
@@ -215,7 +223,14 @@ returns empty, and the same subject with a different issuer returns empty.
 The user reported a successful full suite with 194 tests after this addition.
 The 191-test result above records the earlier run without Auth0 variables.
 
+The use case adds two unit tests with a mocked AccountRepository: returning the
+found Account and throwing AccountNotFoundException when the repository returns
+empty. They also verify the issuer and subject passed to the repository; the
+absence test checks the exception message. The user reported 196 passing tests
+with zero failures, errors, or skipped tests after this addition.
+
 The next business work will connect the validated identity to the local Account
-lookup and define onboarding and Customer linkage. A future frontend will need its own client registration and
+use case, define the HTTP response for an unknown local identity, and define
+onboarding and Customer linkage. A future frontend will need its own client registration and
 callback configuration. Role and Order ownership rules remain in
 [technical decisions](decisions.md#order-access-policy-planned).

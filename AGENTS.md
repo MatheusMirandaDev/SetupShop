@@ -126,6 +126,12 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   The adapter delegates to a Spring Data query matching both values exactly.
   Integration tests cover a matching identity, a different subject, and a
   different issuer. This lookup is not yet used by the authentication endpoint.
+- `GetAccountByExternalIdentityUseCase` is registered as a Spring service with
+  a read-only transaction. It returns the Account found by issuer and subject
+  or throws `AccountNotFoundException` with the message
+  `Account not found for external identity`. Unit tests cover both outcomes.
+  The use case accepts strings, without JWT or HTTP dependencies, and is not
+  yet connected to a controller.
 - Registration/onboarding and role and ownership authorization remain
   unimplemented. Order placement still accepts
   the request Customer ID, and reads are not filtered by the authenticated
@@ -164,11 +170,14 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   successful local run without Auth0 variables verifies this configuration
   dependency; a GitHub Actions result has not been verified in this session.
 - The Account lookup slice is complete and reviewed. The user reported 194
-  passing tests with zero failures, errors, or skipped tests. After its
-  documentation update, this slice is ready for commit; no commit or push for
-  it has been requested. Continue with one small test exercise for the next
-  behavior after closing this slice. Integrating the validated JWT identity
-  with local records and implementing onboarding remain pending.
+  passing tests and subsequently finalized its commit and push.
+- The external identity lookup use case slice is complete and reviewed. The
+  user reported 196 passing tests with zero failures, errors, or skipped tests.
+  After its documentation update, this slice is ready for commit; no commit
+  or push for it has been requested. Continue with one small test exercise
+  for the next behavior after closing this slice. HTTP integration, the HTTP
+  response for an identity without a local Account, and onboarding remain
+  pending.
 
 ## Open customer registration decisions
 

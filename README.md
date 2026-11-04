@@ -384,14 +384,16 @@ without requiring an error body.
 
 The project is organized by business feature. `product`, `customer`, and
 `order` each separate business rules, orchestration, and framework code.
-`account` contains the domain, persistence, and authentication HTTP endpoint:
+`account` contains the domain, identity lookup use case, persistence, and
+authentication HTTP endpoint:
 
 ```text
 src/main/java/br/com/setupshop/
 ├── product/
 ├── customer/
 ├── account/
-│   ├── domain/                  # Account, role, repository contract
+│   ├── domain/                  # Account, role, exceptions, repository contract
+│   ├── application/usecase/     # Retrieve Account by external identity
 │   └── infrastructure/
 │       ├── persistence/         # JPA repository and adapter
 │       └── web/                 # Authentication controller and identity DTO
@@ -479,6 +481,14 @@ that changing either the issuer or subject returns an empty result. The user
 reported 194 passing tests after adding this lookup. The 191-test run above
 records the earlier verification without Auth0 environment variables.
 
+`GetAccountByExternalIdentityUseCase` uses the repository to return an existing
+Account or throw `AccountNotFoundException` with the message
+`Account not found for external identity`. Two unit tests cover both outcomes
+and the repository arguments. The latest full-suite result reported by the
+user is 196 passing tests with zero failures, errors, or skipped tests. This
+use case is not yet called by a controller, and the exception has no HTTP
+mapping yet.
+
 `AuthenticationControllerTest` keeps security filters active and replaces
 `JwtDecoder` with a mock. It covers 401 for missing/rejected tokens and the
 200 identity response for a token accepted by the decoder. It does not
@@ -492,8 +502,9 @@ against Auth0 with a fresh token (200) and without authentication (401).
 
 Swagger UI documents the current HTTP contract. The domain model and technical
 decisions record the design behind it. JWT authentication and external identity
-persistence and repository lookup by issuer and subject are implemented.
-Connecting the validated JWT to that lookup, Customer onboarding, and Account/Customer linkage
+persistence, repository lookup by issuer and subject, and the use case for
+retrieving an existing Account are implemented. Connecting the validated JWT
+to that use case, Customer onboarding, and Account/Customer linkage
 remain planned. The Order access policy's role and ownership rules are not yet
 enforced; unauthenticated requests are rejected. Cart, inventory workflows,
 payment, messaging, and cloud deployment remain deferred. The current Order

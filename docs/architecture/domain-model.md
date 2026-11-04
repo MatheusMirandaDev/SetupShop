@@ -119,6 +119,10 @@ The repository lookup returns an optional Account for an exact issuer/subject
 pair and can expose its existing Customer ID to a future application flow.
 It does not create that link, and the authentication endpoint does not call
 the lookup yet.
+The application layer now exposes GetAccountByExternalIdentityUseCase, which
+returns the Account for that pair or throws AccountNotFoundException when
+absent. This does not change the entity relationships in the diagram. The
+use case is not yet connected to the HTTP flow or onboarding.
 Local password hashing and pepper
 are outside this version. See the
 [Google login decision](../decisions.md#google-only-login-through-auth0) and

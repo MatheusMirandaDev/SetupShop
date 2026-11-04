@@ -264,8 +264,25 @@ This document records only technical decisions already adopted by SetupShop.
   subject returns an empty result. Three PostgreSQL integration tests cover
   these cases, and the user reported 194 passing tests in the full suite.
   The lookup does not create or link records. `GET /auth/me` still returns
-  JWT identity only, without consulting Account or Customer. Integrating this
-  lookup and deciding how an unknown identity enters onboarding remain pending.
+  JWT identity only, without consulting Account or Customer. HTTP integration
+  and deciding how an unknown identity enters onboarding remain pending.
+
+## Retrieve a local Account from external identity
+
+- **Context:** Application flows need to retrieve an existing Account using
+  issuer and subject independently of JWT and HTTP representation.
+- **Decision:** Implement `GetAccountByExternalIdentityUseCase` as a Spring
+  service with constructor injection and a read-only transaction. Its
+  `execute(String issuer, String subject)` method consults AccountRepository,
+  returns the Account, or throws the domain exception AccountNotFoundException
+  with the message `Account not found for external identity`.
+- **Consequence:** The repository preserves its optional result while the use
+  case expresses that an existing Account is required by its caller. Two unit
+  tests cover the returned Account and the exception, including its message
+  and repository arguments. The user reported 196 passing tests in the full
+  suite. The use case does not create or link records, and no controller calls
+  it yet. An absent local Account does not invalidate a correctly authenticated
+  JWT; its HTTP handling and onboarding flow remain to be defined.
 
 ## Password hashing with Argon2id and pepper (superseded)
 
