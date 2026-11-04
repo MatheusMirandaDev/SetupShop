@@ -176,9 +176,9 @@ This document records only technical decisions already adopted by SetupShop.
   PostgreSQL. Generate timestamps with database defaults and the existing
   update trigger function.
 - **Consequence:** Each Customer can have at most one Account. Account no longer
-  stores a password hash. The persistence slice stores external identity data
-  but does not authenticate tokens, look up Accounts by issuer and subject, or
-  provide onboarding. Email uniqueness remains implemented while its role in
+  stores a password hash. Account persistence stores and looks up external
+  identity data; token validation belongs to the Resource Server configuration.
+  Onboarding remains unimplemented. Email uniqueness remains implemented while its role in
   onboarding and provider email changes remains open. The nullable Customer
   link does not settle how administrators are created or linked to Customers.
   V7 leaves V6 unchanged, adds required identity columns and composite
@@ -250,6 +250,22 @@ This document records only technical decisions already adopted by SetupShop.
   process environment. The workflow does not need to define these variables
   for tests. This local check does not establish a successful GitHub Actions
   run. Application startup still requires real issuer and audience settings.
+
+## Account lookup by external identity
+
+- **Context:** A validated JWT supplies issuer and subject, while Customer data
+  and application roles belong to local records. Recognizing an existing local
+  Account requires both identity values rather than an email match.
+- **Decision:** Add `Optional<Account> findByIssuerAndSubject(String issuer,
+  String subject)` to the domain repository contract. Delegate through the
+  persistence adapter to the Spring Data query matching both fields exactly,
+  without normalization or a schema change.
+- **Consequence:** A matching pair returns the Account; a different issuer or
+  subject returns an empty result. Three PostgreSQL integration tests cover
+  these cases, and the user reported 194 passing tests in the full suite.
+  The lookup does not create or link records. `GET /auth/me` still returns
+  JWT identity only, without consulting Account or Customer. Integrating this
+  lookup and deciding how an unknown identity enters onboarding remain pending.
 
 ## Password hashing with Argon2id and pepper (superseded)
 

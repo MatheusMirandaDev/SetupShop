@@ -14,6 +14,21 @@ All requests currently require authentication, including Swagger UI and
 OpenAPI routes. A valid token alone does not establish ownership of a Customer
 or an Order.
 
+The local Account repository now supports lookup by issuer and subject. This
+capability is not yet connected to the HTTP authentication flow.
+
+## Local Account lookup
+
+`AccountRepository.findByIssuerAndSubject(String issuer, String subject)`
+returns `Optional<Account>`. The persistence adapter delegates to Spring Data
+to match both values exactly, preserving their stored representation.
+
+When integrated into an application flow, a found Account can supply the
+local role and Customer ID. An empty result means there is no local Account
+for that identity and onboarding still needs to be handled. The lookup itself
+does not create a Customer or Account, link existing records, or grant access.
+`GET /auth/me` continues to return issuer and subject directly from the JWT.
+
 ## Development configuration
 
 | Setting | Value |
@@ -194,7 +209,13 @@ when their access policies are implemented. The current CI workflow runs
 the configuration it needs. A GitHub Actions run has not been verified in
 this session.
 
-The next business slice will link the validated identity to local Account and
-Customer records. A future frontend will need its own client registration and
+The Account lookup slice adds three PostgreSQL integration tests: a matching
+pair returns the saved Account, the same issuer with a different subject
+returns empty, and the same subject with a different issuer returns empty.
+The user reported a successful full suite with 194 tests after this addition.
+The 191-test result above records the earlier run without Auth0 variables.
+
+The next business work will connect the validated identity to the local Account
+lookup and define onboarding and Customer linkage. A future frontend will need its own client registration and
 callback configuration. Role and Order ownership rules remain in
 [technical decisions](decisions.md#order-access-policy-planned).

@@ -121,8 +121,13 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   validity times. All requests require authentication, including documentation
   endpoints. `GET /auth/me` returns issuer and subject from the authenticated
   JWT without consulting Account or Customer.
-- Registration/onboarding, Account lookup by external identity, and role and
-  ownership authorization remain unimplemented. Order placement still accepts
+- Account lookup by external identity is implemented through
+  `AccountRepository.findByIssuerAndSubject`, returning `Optional<Account>`.
+  The adapter delegates to a Spring Data query matching both values exactly.
+  Integration tests cover a matching identity, a different subject, and a
+  different issuer. This lookup is not yet used by the authentication endpoint.
+- Registration/onboarding and role and ownership authorization remain
+  unimplemented. Order placement still accepts
   the request Customer ID, and reads are not filtered by the authenticated
   Customer. Authentication alone does not enforce the adopted Order access
   policy. See `docs/decisions.md` and `docs/authentication.md`. Never edit
@@ -155,13 +160,15 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   preserve their HTTP/controller scope. Authentication tests keep filters active
   and import the real SecurityConfig. These controller tests do not establish
   authorization coverage for the business endpoints.
-- The user explicitly prioritized authentication before Account/Customer
-  linkage. Continue with one small test exercise for the next behavior after
-  closing the authentication slice. Linkage and onboarding remain pending.
-- The authentication slice is ready for commit after the documentation update.
-  No commit or push has been requested. The successful local run without Auth0
-  variables verifies this configuration dependency; a GitHub Actions result
-  has not been verified in this session.
+- The user finalized the authentication slice with commits and a push. The
+  successful local run without Auth0 variables verifies this configuration
+  dependency; a GitHub Actions result has not been verified in this session.
+- The Account lookup slice is complete and reviewed. The user reported 194
+  passing tests with zero failures, errors, or skipped tests. After its
+  documentation update, this slice is ready for commit; no commit or push for
+  it has been requested. Continue with one small test exercise for the next
+  behavior after closing this slice. Integrating the validated JWT identity
+  with local records and implementing onboarding remain pending.
 
 ## Open customer registration decisions
 

@@ -26,7 +26,7 @@ later catalog changes do not alter placed orders.
 | Products | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Customers | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Orders | Place an order, get an order by ID, and list orders with pagination |
-| Accounts | Domain model and persistence with unique external identity, email, and Customer link; no HTTP endpoints yet |
+| Accounts | Domain model and persistence with unique external identity, email, and Customer link; lookup by issuer and subject through the repository; no Account management HTTP endpoints yet |
 | Authentication | Google login through Auth0 and authenticated identity lookup with `GET /auth/me` |
 
 Products and customers remain readable after logical deactivation. Both must be
@@ -473,6 +473,11 @@ the real environment configuration described above.
 Account tests cover external identity validation, storage and retrieval,
 duplicate identities, and different users sharing the same issuer, as well as
 email uniqueness and Customer linkage constraints.
+The repository provides `findByIssuerAndSubject`, returning `Optional<Account>`.
+Integration tests verify that a matching pair returns the saved Account and
+that changing either the issuer or subject returns an empty result. The user
+reported 194 passing tests after adding this lookup. The 191-test run above
+records the earlier verification without Auth0 environment variables.
 
 `AuthenticationControllerTest` keeps security filters active and replaces
 `JwtDecoder` with a mock. It covers 401 for missing/rejected tokens and the
@@ -487,7 +492,8 @@ against Auth0 with a fresh token (200) and without authentication (401).
 
 Swagger UI documents the current HTTP contract. The domain model and technical
 decisions record the design behind it. JWT authentication and external identity
-persistence are implemented. Customer onboarding and Account/Customer linkage
+persistence and repository lookup by issuer and subject are implemented.
+Connecting the validated JWT to that lookup, Customer onboarding, and Account/Customer linkage
 remain planned. The Order access policy's role and ownership rules are not yet
 enforced; unauthenticated requests are rejected. Cart, inventory workflows,
 payment, messaging, and cloud deployment remain deferred. The current Order

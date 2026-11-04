@@ -4,6 +4,8 @@ import br.com.setupshop.account.domain.model.Account;
 import br.com.setupshop.account.domain.repository.AccountRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public class AccountRepositoryAdapter implements AccountRepository {
 
@@ -16,5 +18,10 @@ public class AccountRepositoryAdapter implements AccountRepository {
     @Override
     public Account save(Account account) {
         return accountRepository.save(account);
+    }
+
+    @Override
+    public Optional<Account> findByIssuerAndSubject(String issuer, String subject) {
+         return accountRepository.findByIssuerAndSubject(issuer, subject);
     }
 }

@@ -101,7 +101,8 @@ classDiagram
     Product "1" <-- "0..*" OrderItem: references (productId)
 ``` 
 
-Account domain and persistence and JWT authentication are implemented.
+Account domain, persistence, lookup by issuer and subject, and JWT
+authentication are implemented.
 Registration, identity-to-Account linkage, and role/ownership authorization
 remain planned. The optional Customer link in
 the diagram reflects the current mapping; `CUSTOMER` accounts always require
@@ -114,6 +115,10 @@ first login version uses Google only through Auth0. The API validates access
 tokens and `GET /auth/me` returns issuer and subject from the JWT. This does not
 resolve a local Account or Customer. All requests currently require
 authentication; local role and Order ownership checks remain unimplemented.
+The repository lookup returns an optional Account for an exact issuer/subject
+pair and can expose its existing Customer ID to a future application flow.
+It does not create that link, and the authentication endpoint does not call
+the lookup yet.
 Local password hashing and pepper
 are outside this version. See the
 [Google login decision](../decisions.md#google-only-login-through-auth0) and

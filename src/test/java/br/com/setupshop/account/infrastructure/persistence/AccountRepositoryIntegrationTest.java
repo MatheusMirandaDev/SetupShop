@@ -18,6 +18,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest
 @Testcontainers
@@ -259,5 +260,84 @@ class AccountRepositoryIntegrationTest {
         assertEquals(role, accountFound2.getRole());
         assertNotNull(accountFound2.getCreatedAt());
         assertNotNull(accountFound2.getUpdatedAt());
+    }
+
+    @Test
+    void shouldFindAccountByIssuerAndSubject() {
+        String email = "matheus.batista@gmail.com";
+        Customer customer = new Customer(
+            "Matheus Batista",
+            email,
+            "61999999999"
+        );
+        entityManager.persist(customer);
+
+        Long customerId = customer.getId();
+        AccountRole role = AccountRole.CUSTOMER;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "google-oauth2|123456789";
+
+        Account account = new Account(email, customerId, role, issuer, subject);
+        Account savedAccount = accountRepository.save(account);
+        entityManager.flush();
+        entityManager.clear();
+
+        var accountFound = accountRepository.findByIssuerAndSubject(issuer, subject);
+
+        assertTrue(accountFound.isPresent());
+        assertEquals(savedAccount.getId(), accountFound.orElseThrow().getId());
+
+    }
+
+    @Test
+    void shouldReturnEmptyWhenExternalIdentityDoesNotExist() {
+        String email = "matheus.batista@gmail.com";
+        Customer customer = new Customer(
+            "Matheus Batista",
+            email,
+            "61999999999"
+        );
+        entityManager.persist(customer);
+
+        Long customerId = customer.getId();
+        AccountRole role = AccountRole.CUSTOMER;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "google-oauth2|123456789";
+
+        Account account = new Account(email, customerId, role, issuer, subject);
+        Account savedAccount = accountRepository.save(account);
+        entityManager.flush();
+        entityManager.clear();
+
+        var accountFound = accountRepository.
+            findByIssuerAndSubject(issuer, "google-oauth2|987654321");
+
+        assertTrue(accountFound.isEmpty());
+    }
+
+    @Test
+    void shouldReturnEmptyWhenIssuerDoesNotMatch() {
+        String email = "matheus.batista@gmail.com";
+        Customer customer = new Customer(
+            "Matheus Batista",
+            email,
+            "61999999999"
+        );
+        entityManager.persist(customer);
+
+        Long customerId = customer.getId();
+        AccountRole role = AccountRole.CUSTOMER;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "google-oauth2|123456789";
+
+        Account account = new Account(email, customerId, role, issuer, subject);
+        Account savedAccount = accountRepository.save(account);
+        entityManager.flush();
+        entityManager.clear();
+
+        var accountFound = accountRepository.
+            findByIssuerAndSubject("https://test2.auth0.com/", subject);
+
+        assertTrue(accountFound.isEmpty());
     }
 }
