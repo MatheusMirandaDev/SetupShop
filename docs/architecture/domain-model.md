@@ -112,8 +112,9 @@ domain and database through V8.
 The controlled administrator provisioning process remains open.
 
 Account remains separate from Customer: Account represents access and local
-roles; Customer represents a purchasing profile. Visitors will be able to
-browse and compare products without login. Purchases will require Google
+roles; Customer represents a purchasing profile. Visitors can browse product
+listing and detail without login. Comparison requires no login but has no
+dedicated endpoint. Purchases will require Google
 authentication and completed local onboarding, creating Customer first and
 Account second in one database transaction. Individual ADMIN Accounts are
 dedicated to store management and cannot purchase. Personal purchases use a
@@ -128,8 +129,9 @@ external identity, and the password hash field has been removed. V7 assumes an
 empty accounts table and does not convert existing password accounts. The
 first login version uses Google only through Auth0. The API validates access
 tokens and `GET /auth/me` returns issuer and subject from the JWT. This does not
-resolve a local Account or Customer. All requests currently require
-authentication; local role and Order ownership checks remain unimplemented.
+resolve a local Account or Customer. Product listing and detail GET routes are
+public; all other requests require authentication. Local role and Order
+ownership checks remain unimplemented.
 The repository lookup returns an optional Account for an exact issuer/subject
 pair and can expose its existing Customer ID to a future application flow.
 It does not create that link, and the authentication endpoint does not call

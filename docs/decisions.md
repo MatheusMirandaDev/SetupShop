@@ -221,14 +221,16 @@ This document records only technical decisions already adopted by SetupShop.
 
 - **Context:** The first authentication slice needs to verify real access tokens
   before linking external users to local business records.
-- **Decision:** Require authentication for all requests with the current
-  SecurityFilterChain, including documentation routes. `GET /auth/me` returns
+- **Decision:** Require authentication by default with SecurityFilterChain,
+  including documentation routes. The public catalog slice exempts only
+  `GET /products` and `GET /products/{id}`. `GET /auth/me` returns
   only issuer and subject from `@AuthenticationPrincipal Jwt`, using a response
-  record. It does not query or create Account or Customer. Missing or rejected
-  tokens return 401 through Spring Security. The controller JSON error contract
+  record. It does not query or create Account or Customer. Missing tokens on
+  protected routes or rejected tokens return 401 through Spring Security.
+  The controller JSON error contract
   is not applied to authentication failures.
 - **Consequence:** A valid identity can access the endpoint before onboarding.
-  Global authentication does not enforce local roles, Customer activation, or
+  Authentication does not enforce local roles, Customer activation, or
   Order ownership. These checks and the replacement of request-supplied
   Customer IDs remain future slices. The current OpenAPI configuration does not
   provide Swagger UI login or a Bearer authorization control.
@@ -241,7 +243,7 @@ This document records only technical decisions already adopted by SetupShop.
   filters to retain their HTTP contract scope. AuthenticationControllerTest
   imports SecurityConfig, keeps filters enabled, and mocks JwtDecoder to cover
   missing/rejected tokens and authenticated identity responses without Auth0.
-  All four controller test classes provide fictitious issuer and audience
+  Controller and security test classes provide fictitious issuer and audience
   values through `@TestPropertySource`, independently of the local `.env`.
 - **Consequence:** These tests do not establish role/ownership coverage for
   business endpoints or independently verify real decoder claim/signature
@@ -345,8 +347,15 @@ This document records only technical decisions already adopted by SetupShop.
   local records in one transaction. Auth0 identity creation is separate from
   local Account creation. Purchases without login are outside the target flow.
 - **Consequence:** Account and Customer remain separate: Account represents
-  access and Customer represents the purchasing profile. The current security
-  chain still authenticates all routes, so public catalog access is pending.
+  access and Customer represents the purchasing profile. The security chain
+  now permits only GET product listing and detail without authentication and
+  requires authentication for all other requests. ProductSecurityTest keeps
+  filters active, imports SecurityConfig, and mocks JwtDecoder and Product use
+  cases. Three tests cover public listing/detail and rejection of product
+  creation without authentication. The creation test supplies a valid body
+  and CSRF token, expects 401, and verifies no use case invocation. The user
+  reported 203 passing tests. CSRF configuration and ADMIN checks for writes
+  are not changed by the public catalog slice.
   Order placement still trusts the request Customer ID; requiring completed
   onboarding and deriving Customer ID from the authenticated Account are also
   pending. Existing Customer records without Accounts must not acquire access

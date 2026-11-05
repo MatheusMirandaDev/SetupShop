@@ -49,8 +49,8 @@ See the [authentication guide](docs/authentication.md).
 
 ### Adopted access policy (pending implementation)
 
-Visitors and logged-in users will be able to browse and compare products
-without login. Public API reads will be `GET /products` and
+Visitors and logged-in users can browse products
+without login. Public API reads are `GET /products` and
 `GET /products/{id}`; no dedicated comparison endpoint exists. Completing a
 purchase will require Google authentication and completed local onboarding.
 Onboarding will create Customer first, then Account with its Customer ID, in
@@ -65,8 +65,8 @@ ADMIN access will be provisioned separately through a controlled process still
 to be defined. More granular staff permissions are deferred until needed.
 
 The no-Customer-link rule for ADMIN is implemented in the domain and database
-through V8. Public catalog access and role/ownership enforcement are pending:
-all routes still require authentication. See the
+through V8. Public catalog reads are implemented; other routes still require
+authentication, and role/ownership enforcement is pending. See the
 [access decisions](docs/decisions.md#public-catalog-and-purchase-onboarding-planned).
 
 ## Getting started
@@ -131,7 +131,8 @@ yet; use Postman for authenticated calls.
 
 ## Authentication
 
-All requests require an Auth0 access token in the HTTP header:
+`GET /products` and `GET /products/{id}` are public and need no token. All other
+requests require an Auth0 access token in the HTTP header:
 
 ```http
 Authorization: Bearer <access_token>
@@ -167,8 +168,9 @@ An illustrative `200 OK` body is:
 ```
 
 The same call without a token returns `401 Unauthorized`. This endpoint does
-not look up Account or Customer. The current policy requires authentication
-globally but does not enforce local roles or Order ownership. Order placement
+not look up Account or Customer. Apart from the public product reads, the
+current policy requires authentication but does not enforce local roles or
+Order ownership. Order placement
 still accepts `customerId` from the request, and Order reads are not restricted
 to the authenticated Customer yet.
 
@@ -239,6 +241,13 @@ descriptions are limited to 500 characters. A price must be non-negative and
 have at most two decimal places.
 
 Use `GET /products/{id}` to read one product and `GET /products` to browse them.
+Both can be called without an Authorization header:
+
+```bash
+curl -i 'http://localhost:8080/products?page=0&size=20'
+curl -i http://localhost:8080/products/1
+```
+
 `PATCH /products/{id}` accepts one or more of `name`, `description`, and `price`;
 omitted fields keep their current values. For example, `{"price": 350.00}`
 changes only the price. A blank description clears it. `DELETE /products/{id}`
@@ -488,7 +497,7 @@ The suite covers domain rules and use cases with unit tests, HTTP behavior with
 MockMvc, and persistence with Testcontainers, PostgreSQL, and Flyway. GitHub
 Actions runs `./mvnw test` on pushes and pull requests using Java 21; the CI
 runner needs Docker for Testcontainers.
-The four controller test classes use `@TestPropertySource` with fictitious
+The controller and security test classes use `@TestPropertySource` with fictitious
 Auth0 issuer and audience values. No Auth0 environment variables, production
 login, or access token are needed by automated tests. The user reported 191
 tests passing with both Auth0 variables removed using:
@@ -518,11 +527,18 @@ user at that stage was 196 passing tests. This
 use case is not yet called by a controller, and the exception has no HTTP
 mapping yet.
 
-The latest full-suite result reported by the user is 200 passing tests with
+The ADMIN restriction full-suite result reported by the user was 200 passing tests with
 zero failures, errors, or skipped tests. The ADMIN restriction adds two domain
 tests and two persistence tests, covering valid creation/storage without a
 Customer ID and rejection of a Customer link. The database rejection test uses
 JdbcTemplate to bypass constructor validation and exercise the V8 constraint.
+
+The latest full-suite result reported by the user is 203 passing tests with
+zero failures, errors, or skipped tests. ProductSecurityTest keeps filters
+enabled, imports SecurityConfig, and mocks JwtDecoder and the Product use
+cases. It verifies public listing and detail (200) and unauthenticated creation
+(401), with no create use case invocation. The creation request includes a
+valid body and a CSRF token to isolate the authentication requirement.
 
 `AuthenticationControllerTest` keeps security filters active and replaces
 `JwtDecoder` with a mock. It covers 401 for missing/rejected tokens and the

@@ -10,8 +10,9 @@ and subject through `GET /auth/me`.
 There is no frontend yet. Postman and the system browser act as the development
 client. Account/Customer linkage, onboarding, local role checks, Customer activation
 checks, and Order ownership authorization are not implemented in this slice.
-All requests currently require authentication, including Swagger UI and
-OpenAPI routes. A valid token alone does not establish ownership of a Customer
+`GET /products` and `GET /products/{id}` are public for anonymous and
+authenticated users. Other requests require authentication, including Swagger
+UI and OpenAPI routes. A valid token alone does not establish ownership of a Customer
 or an Order.
 
 The local Account repository now supports lookup by issuer and subject. This
@@ -19,8 +20,8 @@ capability is not yet connected to the HTTP authentication flow.
 
 ## Adopted access and onboarding flow (pending implementation)
 
-Visitors and authenticated users may browse and compare products. Public reads
-will cover product listing and detail; comparison has no dedicated endpoint.
+Visitors and authenticated users can browse products through the public listing
+and detail routes. Comparison requires no login but has no dedicated endpoint.
 Purchasing requires Google authentication and completed local onboarding.
 Google login creates or recognizes an Auth0 identity, not a local Account.
 Onboarding will collect the required business data, save Customer to obtain
@@ -41,8 +42,7 @@ the same rule through `ck_accounts_admin_without_customer`. The user confirmed
 an empty local accounts table and successfully applied V8; preserve applied
 V6, V7, and V8.
 
-Other access rules still require implementation: the current security chain
-protects product reads, and Order placement accepts a request-supplied Customer
+Other access rules still require implementation: Order placement accepts a request-supplied Customer
 ID. Role-based endpoint checks, including preventing ADMIN purchases, remain
 pending. A database constraint on Account alone does not enforce Order access.
 See [the decisions](decisions.md#dedicated-administrative-accounts-planned).
@@ -218,7 +218,7 @@ and a mocked JwtDecoder. Its three tests cover missing tokens, decoder
 rejection, and the authenticated identity response. They do not independently
 validate real signatures or incorrect issuer, audience, or time claims.
 
-All four controller test classes define their own configuration:
+The controller and security test classes define their own configuration:
 
 ```java
 @TestPropertySource(properties = {
@@ -262,9 +262,18 @@ with zero failures, errors, or skipped tests after this addition.
 The ADMIN Customer-link restriction adds two domain tests and two persistence
 tests. They verify rejection with a Customer ID and valid creation/storage
 without one. The database rejection test inserts through JdbcTemplate so that
-it tests the constraint independently of the constructor. The latest full-suite
-result reported by the user is 200 tests passing with zero failures, errors,
+it tests the constraint independently of the constructor. The full-suite
+result reported at that stage was 200 tests passing with zero failures, errors,
 or skipped tests. V8 was also successfully applied to the local database.
+
+The public catalog slice adds ProductSecurityTest with the real SecurityConfig
+and active filters, a mocked JwtDecoder, and mocked Product use cases. Three
+tests verify unauthenticated listing and detail return 200 and unauthenticated
+creation returns 401 without calling its use case. The creation test supplies
+a valid JSON body and a CSRF token to isolate authentication; CSRF behavior in
+production is unchanged. The latest full-suite result reported by the user is
+203 passing tests with zero failures, errors, or skipped tests. No ADMIN role
+check for product writes is established by this slice.
 
 The next business work will connect the validated identity to the local Account
 use case, define the HTTP response for an unknown local identity, and define

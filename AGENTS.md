@@ -41,7 +41,7 @@ OpenAPI/Swagger, JUnit, Mockito, and Testcontainers.
 
 Docker must be running for persistence integration tests.
 Tests do not require loading `.env` or configuring Auth0 environment variables.
-The four controller test classes supply fictitious issuer and audience values
+The web controller and security test classes supply fictitious issuer and audience values
 through `@TestPropertySource`. Authentication controller tests replace the
 decoder with a mock and do not require real tokens or a live Auth0 connection.
 Running the application still requires `AUTH0_ISSUER_URI` and `AUTH0_AUDIENCE`.
@@ -118,8 +118,9 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
 - JWT Bearer authentication is implemented using Spring Security Resource
   Server. Configure issuer and audience through `AUTH0_ISSUER_URI` and
   `AUTH0_AUDIENCE`. Spring validates token signature, issuer, audience, and
-  validity times. All requests require authentication, including documentation
-  endpoints. `GET /auth/me` returns issuer and subject from the authenticated
+  validity times. `GET /products` and `GET /products/{id}` are public; all
+  other requests require authentication, including documentation endpoints.
+  `GET /auth/me` returns issuer and subject from the authenticated
   JWT without consulting Account or Customer.
 - Account lookup by external identity is implemented through
   `AccountRepository.findByIssuerAndSubject`, returning `Optional<Account>`.
@@ -138,9 +139,10 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   Customer. Authentication alone does not enforce the adopted Order access
   policy. See `docs/decisions.md` and `docs/authentication.md`. Never edit
   applied migrations, including V6, V7, and V8.
-- Adopted access rules, not yet enforced: product listing and detail are public
+- Product listing and detail are now public
   for visitors and logged-in users; comparison requires no login and has no
-  dedicated endpoint yet. Purchases require Google login, completed local
+  dedicated endpoint yet. Adopted purchase rules still awaiting enforcement
+  require Google login, completed local
   onboarding, and an active Customer resolved from the authenticated Account.
   Onboarding creates Customer first and Account second in one local transaction.
   Keep Account (access) and Customer (purchasing profile) separate.
@@ -200,8 +202,15 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   insert with a Customer link through JdbcTemplate. The user reported 200
   passing tests with zero failures, errors, or skipped tests, confirmed that
   the local accounts table was empty, and successfully applied V8 locally.
-  This slice is ready for commit after the documentation update; no commit
-  or push for it has been requested.
+  The user subsequently finalized this slice with a commit and push.
+- The public catalog slice is complete and reviewed. ProductSecurityTest
+  imports SecurityConfig with filters enabled and mocks JwtDecoder and the
+  Product use cases. Its three tests cover unauthenticated product listing
+  and lookup returning 200, and creation returning 401 without invoking its
+  use case. The creation test supplies a valid body and a CSRF token to isolate
+  authentication. The user reported 203 passing tests with zero failures,
+  errors, or skipped tests. This slice is ready for commit after the
+  documentation update; no commit or push for it has been requested.
 
 ## Open customer registration decisions
 
