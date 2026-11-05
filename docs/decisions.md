@@ -180,7 +180,8 @@ This document records only technical decisions already adopted by SetupShop.
   identity data; token validation belongs to the Resource Server configuration.
   Onboarding remains unimplemented. Email uniqueness remains implemented while its role in
   onboarding and provider email changes remains open. The nullable Customer
-  link does not settle how administrators are created or linked to Customers.
+  link is required for CUSTOMER and forbidden for ADMIN. Domain validation and
+  V8 enforce the ADMIN restriction without changing V6 or V7.
   V7 leaves V6 unchanged, adds required identity columns and composite
   uniqueness, and drops `password_hash`. It requires an empty accounts table,
   as confirmed for the local database; populated databases need a separately
@@ -328,6 +329,56 @@ This document records only technical decisions already adopted by SetupShop.
   synchronization, handling of existing email conflicts and Customers without
   Accounts, and the onboarding HTTP contract remain open. Matching email alone
   must not grant ownership of an existing Customer.
+
+## Public catalog and purchase onboarding (planned)
+
+- **Context:** Visitors should be able to browse products before deciding to
+  buy. Completing a purchase requires an authenticated, locally registered
+  customer.
+- **Decision:** Allow visitors and authenticated users to list and view products
+  through `GET /products` and `GET /products/{id}`. Product comparison does not
+  require login; no separate comparison endpoint is introduced by this decision.
+  Require Google login through Auth0 and completed local onboarding before
+  placing an order. After authentication, collect required Customer data,
+  create Customer to obtain its ID, then create Account with that ID, the
+  validated issuer and subject, and server-assigned CUSTOMER role. Create both
+  local records in one transaction. Auth0 identity creation is separate from
+  local Account creation. Purchases without login are outside the target flow.
+- **Consequence:** Account and Customer remain separate: Account represents
+  access and Customer represents the purchasing profile. The current security
+  chain still authenticates all routes, so public catalog access is pending.
+  Order placement still trusts the request Customer ID; requiring completed
+  onboarding and deriving Customer ID from the authenticated Account are also
+  pending. Existing Customer records without Accounts must not acquire access
+  through an email match alone; any transition requires verified ownership.
+
+## Dedicated administrative accounts (planned)
+
+- **Context:** Store staff need management access independently of a personal
+  purchasing profile. The initial store does not yet need separate catalog,
+  support, and management permission sets.
+- **Decision:** Keep one ADMIN role initially and an individual Account for
+  each administrator; do not share an administrative login. Administrative
+  Accounts must have no Customer link and must not place orders. Staff who
+  purchase use a separate CUSTOMER Account. Public onboarding always assigns
+  CUSTOMER and must never accept a caller-selected ADMIN role. Provision ADMIN
+  access through a controlled process outside public registration; the exact
+  provisioning process remains to be defined. Enforce access in the backend.
+  Introduce more granular permissions only when concrete responsibilities
+  require them.
+- **Consequence:** Under Google-only authentication, a unique external identity,
+  and one role per Account, administrative and personal Accounts require
+  different Google identities. Domain validation now rejects ADMIN with a
+  Customer ID, and V8 adds the constraint `ck_accounts_admin_without_customer`
+  using `CHECK (role <> 'ADMIN' OR customer_id IS NULL)`. Two domain tests and
+  two persistence tests cover creation and storage without a Customer ID and
+  rejection of a Customer link. The direct SQL rejection test uses JdbcTemplate
+  to bypass constructor validation. The user reported 200 passing tests,
+  confirmed an empty local accounts table, and successfully applied V8 locally.
+  Populated databases must be reviewed for violations before applying V8;
+  applied V6, V7, and V8 must remain unchanged. Role-based endpoint enforcement
+  and controlled ADMIN provisioning remain unimplemented. Product management
+  belongs to administration; detailed Customer endpoint permissions remain open.
 
 ## Order access policy (planned)
 

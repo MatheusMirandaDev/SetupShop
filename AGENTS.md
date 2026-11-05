@@ -137,7 +137,23 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   the request Customer ID, and reads are not filtered by the authenticated
   Customer. Authentication alone does not enforce the adopted Order access
   policy. See `docs/decisions.md` and `docs/authentication.md`. Never edit
-  applied migrations, including V6 and V7.
+  applied migrations, including V6, V7, and V8.
+- Adopted access rules, not yet enforced: product listing and detail are public
+  for visitors and logged-in users; comparison requires no login and has no
+  dedicated endpoint yet. Purchases require Google login, completed local
+  onboarding, and an active Customer resolved from the authenticated Account.
+  Onboarding creates Customer first and Account second in one local transaction.
+  Keep Account (access) and Customer (purchasing profile) separate.
+- ADMIN is a dedicated, individual management Account with no Customer link
+  and no purchasing permission. Personal purchases require a separate CUSTOMER
+  Account and, with the current Google-only, single-role model, a different
+  Google identity. Public onboarding assigns CUSTOMER on the server; controlled
+  ADMIN provisioning remains to be designed. One ADMIN role is sufficient for
+  now; defer granular permissions until needed. Domain validation rejects
+  non-null Customer IDs for ADMIN. Applied V8 adds
+  `ck_accounts_admin_without_customer` with
+  `CHECK (role <> 'ADMIN' OR customer_id IS NULL)`; never edit it.
+  ADMIN provisioning and role-based endpoint enforcement remain pending.
 - Cart, inventory workflows, payments, messaging, cloud deployment, and
   microservices remain deferred until required by their slice.
 
@@ -173,11 +189,19 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   passing tests and subsequently finalized its commit and push.
 - The external identity lookup use case slice is complete and reviewed. The
   user reported 196 passing tests with zero failures, errors, or skipped tests.
-  After its documentation update, this slice is ready for commit; no commit
-  or push for it has been requested. Continue with one small test exercise
-  for the next behavior after closing this slice. HTTP integration, the HTTP
+  The user subsequently finalized its commit and push. Continue with one
+  small test exercise for the next behavior. HTTP integration, the HTTP
   response for an identity without a local Account, and onboarding remain
   pending.
+
+- The ADMIN Customer-link restriction slice is complete and reviewed. Two
+  domain tests cover rejection with a Customer ID and creation without one.
+  Two persistence tests cover saving a valid ADMIN and rejecting a direct SQL
+  insert with a Customer link through JdbcTemplate. The user reported 200
+  passing tests with zero failures, errors, or skipped tests, confirmed that
+  the local accounts table was empty, and successfully applied V8 locally.
+  This slice is ready for commit after the documentation update; no commit
+  or push for it has been requested.
 
 ## Open customer registration decisions
 
@@ -191,8 +215,10 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   identity creation is outside the local database transaction.
 - Decide how existing Customers without accounts obtain access and how their
   ownership is verified before an Account is linked.
-- Decide how administrator accounts are created and whether they have a
-  Customer record.
+- Define the controlled provisioning process for individual ADMIN Accounts.
+  The absence of a Customer link is enforced in the domain and database.
+  The prohibition on purchases and other role-based endpoint rules still
+  require backend access enforcement.
 - Decide whether deactivating a Customer disables its Account.
 - The development Auth0 tenant, API audience, and Postman PKCE client are
   configured; token validation is implemented. Define production configuration,

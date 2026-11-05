@@ -47,6 +47,28 @@ access tokens, and `/auth/me` returns the authenticated issuer and subject.
 There is no frontend yet; the development login flow uses Postman and a browser.
 See the [authentication guide](docs/authentication.md).
 
+### Adopted access policy (pending implementation)
+
+Visitors and logged-in users will be able to browse and compare products
+without login. Public API reads will be `GET /products` and
+`GET /products/{id}`; no dedicated comparison endpoint exists. Completing a
+purchase will require Google authentication and completed local onboarding.
+Onboarding will create Customer first, then Account with its Customer ID, in
+one transaction. Account represents access; Customer represents the purchasing
+profile.
+
+Each administrator will use an individual ADMIN Account for store management,
+without a Customer link or permission to purchase. Personal purchases require
+a separate CUSTOMER Account, using a different Google identity under the
+current single-role model. Public registration will always assign CUSTOMER;
+ADMIN access will be provisioned separately through a controlled process still
+to be defined. More granular staff permissions are deferred until needed.
+
+The no-Customer-link rule for ADMIN is implemented in the domain and database
+through V8. Public catalog access and role/ownership enforcement are pending:
+all routes still require authentication. See the
+[access decisions](docs/decisions.md#public-catalog-and-purchase-onboarding-planned).
+
 ## Getting started
 
 ### Requirements
@@ -428,10 +450,17 @@ uses `ddl-auto: validate` rather than creating or modifying tables.
 | `V5` | Create order items |
 | `V6` | Create accounts with unique email and Customer link, foreign key, and timestamps |
 | `V7` | Add required issuer and subject with composite uniqueness and remove password hashes |
+| `V8` | Reject ADMIN Accounts with a Customer link |
 
 V7 requires `accounts` to be empty when it runs, as confirmed for the current
 local database. It does not convert existing password accounts into external
 identities. Applied migrations must remain unchanged.
+
+V8 adds `ck_accounts_admin_without_customer` using
+`CHECK (role <> 'ADMIN' OR customer_id IS NULL)`. Existing ADMIN records with
+a Customer link must be reviewed before applying it to a populated database.
+The user confirmed the local accounts table was empty and successfully applied
+V8. Preserve V8 now that it has been applied.
 
 Order items store product IDs, quantities, and captured unit prices. Orders
 store their calculated totals and start with status `CREATED`. Database defaults
@@ -485,9 +514,15 @@ records the earlier verification without Auth0 environment variables.
 Account or throw `AccountNotFoundException` with the message
 `Account not found for external identity`. Two unit tests cover both outcomes
 and the repository arguments. The latest full-suite result reported by the
-user is 196 passing tests with zero failures, errors, or skipped tests. This
+user at that stage was 196 passing tests. This
 use case is not yet called by a controller, and the exception has no HTTP
 mapping yet.
+
+The latest full-suite result reported by the user is 200 passing tests with
+zero failures, errors, or skipped tests. The ADMIN restriction adds two domain
+tests and two persistence tests, covering valid creation/storage without a
+Customer ID and rejection of a Customer link. The database rejection test uses
+JdbcTemplate to bypass constructor validation and exercise the V8 constraint.
 
 `AuthenticationControllerTest` keeps security filters active and replaces
 `JwtDecoder` with a mock. It covers 401 for missing/rejected tokens and the

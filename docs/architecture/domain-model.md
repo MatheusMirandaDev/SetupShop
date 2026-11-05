@@ -56,6 +56,7 @@ classDiagram
         Issuer and subject are non-blank and limited to 255 characters each;
         Issuer and subject are preserved exactly and their pair is unique;
         CUSTOMER accounts require a Customer ID;
+        ADMIN accounts must not have a Customer ID;
         A supplied Customer ID must be positive and reference an existing Customer;
         Each Customer can have at most one Account;
         Timestamps are managed by the database."
@@ -106,9 +107,23 @@ authentication are implemented.
 Registration, identity-to-Account linkage, and role/ownership authorization
 remain planned. The optional Customer link in
 the diagram reflects the current mapping; `CUSTOMER` accounts always require
-that link. Administrator creation and Customer linkage rules remain open.
+that link. ADMIN Accounts must have no Customer link; this is enforced in the
+domain and database through V8.
+The controlled administrator provisioning process remains open.
 
-The diagram shows the current Account after V7: issuer and subject identify the
+Account remains separate from Customer: Account represents access and local
+roles; Customer represents a purchasing profile. Visitors will be able to
+browse and compare products without login. Purchases will require Google
+authentication and completed local onboarding, creating Customer first and
+Account second in one database transaction. Individual ADMIN Accounts are
+dedicated to store management and cannot purchase. Personal purchases use a
+separate CUSTOMER Account and a different Google identity under the current
+single-role, Google-only model. Public onboarding will always assign CUSTOMER.
+These target rules do not add anonymous purchasing or change current endpoint
+permissions. Role-based endpoint enforcement remains pending. Rejecting ADMIN
+Customer links is implemented through domain validation and applied V8.
+
+The diagram shows the current Account after V8: issuer and subject identify the
 external identity, and the password hash field has been removed. V7 assumes an
 empty accounts table and does not convert existing password accounts. The
 first login version uses Google only through Auth0. The API validates access

@@ -11,6 +11,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -35,6 +36,9 @@ class AccountRepositoryIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
 
     @Test
     void shouldSaveCustomerAccount() {
@@ -331,7 +335,7 @@ class AccountRepositoryIntegrationTest {
         String subject = "google-oauth2|123456789";
 
         Account account = new Account(email, customerId, role, issuer, subject);
-        Account savedAccount = accountRepository.save(account);
+        accountRepository.save(account);
         entityManager.flush();
         entityManager.clear();
 
@@ -339,5 +343,63 @@ class AccountRepositoryIntegrationTest {
             findByIssuerAndSubject("https://test2.auth0.com/", subject);
 
         assertTrue(accountFound.isEmpty());
+    }
+
+    @Test
+    void shouldSaveAdminAccountWithoutCustomerId() {
+        String email = "matheus.batista@gmail.com";
+        Long customerId = null;
+        AccountRole role = AccountRole.ADMIN;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "google-oauth2|123456789";
+
+        Account account = new Account(email, customerId, role, issuer, subject);
+        Account savedAccount = accountRepository.save(account);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertNotNull(savedAccount.getId());
+
+        Account accountFound = entityManager.find(Account.class, savedAccount.getId());
+
+        assertNotNull(accountFound);
+        assertEquals(issuer, accountFound.getIssuer());
+        assertEquals(subject, accountFound.getSubject());
+        assertEquals(email, accountFound.getEmail());
+        assertEquals(customerId, accountFound.getCustomerId());
+        assertEquals(role, accountFound.getRole());
+        assertNotNull(accountFound.getCreatedAt());
+        assertNotNull(accountFound.getUpdatedAt());
+    }
+
+    @Test
+    void shouldRejectAdminAccountWithCustomerIdAtDatabaseLevel() {
+        String email = "matheus.batista@gmail.com";
+        Customer customer = new Customer(
+            "Matheus Batista",
+            email,
+            "61999999999"
+        );
+        entityManager.persist(customer);
+        entityManager.flush();
+        entityManager.clear();
+
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "google-oauth2|123456789";
+
+        assertThrows(
+            DataIntegrityViolationException.class,
+            () -> jdbcTemplate.update(
+                """
+                    INSERT INTO accounts (email, customer_id, role, issuer, subject)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                email,
+                customer.getId(),
+                AccountRole.ADMIN.name(),
+                issuer,
+                subject
+            )
+        );
     }
 }

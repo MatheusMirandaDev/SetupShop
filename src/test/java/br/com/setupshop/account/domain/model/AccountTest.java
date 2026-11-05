@@ -259,4 +259,30 @@ class AccountTest {
 
         assertEquals(subject, account.getSubject());
     }
+
+    @Test
+    void shouldRejectAdminAccountWithCustomerId() {
+        String email = "matheus.batista@gmail.com";
+        Long customerId = 10L;
+        AccountRole role = AccountRole.ADMIN;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "a".repeat(255);
+
+        assertThrows(IllegalArgumentException.class,
+            () -> new Account(email, customerId, role, issuer, subject));
+    }
+
+    @Test
+    void shouldCreateAdminAccountWithoutCustomerId() {
+        String email = "matheus.batista@gmail.com";
+        Long customerId = null;
+        AccountRole role = AccountRole.ADMIN;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "a".repeat(255);
+
+        Account account = new Account(email, customerId, role, issuer, subject);
+
+        assertEquals(customerId, account.getCustomerId());
+        assertEquals(role, account.getRole());
+    }
 }

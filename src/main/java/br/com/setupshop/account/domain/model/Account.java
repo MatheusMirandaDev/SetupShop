@@ -93,6 +93,10 @@ public class Account {
             throw new IllegalArgumentException("Account customer Id must be positive");
         }
 
+        if (customerId != null && role == AccountRole.ADMIN){
+            throw new IllegalArgumentException("Admin account cannot have a customer Id");
+        }
+
         return customerId;
     }
 

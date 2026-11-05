@@ -17,6 +17,36 @@ or an Order.
 The local Account repository now supports lookup by issuer and subject. This
 capability is not yet connected to the HTTP authentication flow.
 
+## Adopted access and onboarding flow (pending implementation)
+
+Visitors and authenticated users may browse and compare products. Public reads
+will cover product listing and detail; comparison has no dedicated endpoint.
+Purchasing requires Google authentication and completed local onboarding.
+Google login creates or recognizes an Auth0 identity, not a local Account.
+Onboarding will collect the required business data, save Customer to obtain
+its ID, then save a CUSTOMER Account with that ID and the validated issuer and
+subject, committing both records in the same database transaction.
+
+Keep Account and Customer separate. A dedicated ADMIN Account represents an
+individual staff member's management access, has no Customer link, and cannot
+purchase. Personal buying uses a separate CUSTOMER Account; with one role per
+Account and Google-only login, this requires a different Google identity.
+Public registration must assign CUSTOMER on the server and cannot grant ADMIN.
+The controlled administrative provisioning procedure remains to be defined.
+Keep a single ADMIN role until concrete needs justify granular permissions.
+
+The ADMIN Customer-link restriction is implemented: the domain rejects a
+non-null Customer ID for ADMIN with `IllegalArgumentException`, and V8 enforces
+the same rule through `ck_accounts_admin_without_customer`. The user confirmed
+an empty local accounts table and successfully applied V8; preserve applied
+V6, V7, and V8.
+
+Other access rules still require implementation: the current security chain
+protects product reads, and Order placement accepts a request-supplied Customer
+ID. Role-based endpoint checks, including preventing ADMIN purchases, remain
+pending. A database constraint on Account alone does not enforce Order access.
+See [the decisions](decisions.md#dedicated-administrative-accounts-planned).
+
 ## Local Account lookup
 
 `AccountRepository.findByIssuerAndSubject(String issuer, String subject)`
@@ -228,6 +258,13 @@ found Account and throwing AccountNotFoundException when the repository returns
 empty. They also verify the issuer and subject passed to the repository; the
 absence test checks the exception message. The user reported 196 passing tests
 with zero failures, errors, or skipped tests after this addition.
+
+The ADMIN Customer-link restriction adds two domain tests and two persistence
+tests. They verify rejection with a Customer ID and valid creation/storage
+without one. The database rejection test inserts through JdbcTemplate so that
+it tests the constraint independently of the constructor. The latest full-suite
+result reported by the user is 200 tests passing with zero failures, errors,
+or skipped tests. V8 was also successfully applied to the local database.
 
 The next business work will connect the validated identity to the local Account
 use case, define the HTTP response for an unknown local identity, and define
