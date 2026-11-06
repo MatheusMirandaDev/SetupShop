@@ -139,7 +139,10 @@ the lookup yet.
 The application layer now exposes GetAccountByExternalIdentityUseCase, which
 returns the Account for that pair or throws AccountNotFoundException when
 absent. This does not change the entity relationships in the diagram. The
-use case is not yet connected to the HTTP flow or onboarding.
+use case is now called by `GET /accounts/me` using issuer and subject from the
+validated JWT. The endpoint returns id, email, role, and customerId for an
+existing Account or 404 when absent, while missing authentication returns 401.
+It does not create or link records; onboarding remains pending.
 Local password hashing and pepper
 are outside this version. See the
 [Google login decision](../decisions.md#google-only-login-through-auth0) and

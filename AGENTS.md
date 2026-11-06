@@ -126,13 +126,19 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   `AccountRepository.findByIssuerAndSubject`, returning `Optional<Account>`.
   The adapter delegates to a Spring Data query matching both values exactly.
   Integration tests cover a matching identity, a different subject, and a
-  different issuer. This lookup is not yet used by the authentication endpoint.
+  different issuer. `GET /accounts/me` uses this lookup through its use case;
+  `GET /auth/me` continues to return only the JWT identity.
 - `GetAccountByExternalIdentityUseCase` is registered as a Spring service with
   a read-only transaction. It returns the Account found by issuer and subject
   or throws `AccountNotFoundException` with the message
   `Account not found for external identity`. Unit tests cover both outcomes.
-  The use case accepts strings, without JWT or HTTP dependencies, and is not
-  yet connected to a controller.
+  The use case accepts strings, without JWT or HTTP dependencies. AccountController
+  extracts issuer and subject exclusively from the validated JWT and returns
+  AccountResponse with id, email, role, and customerId. Missing local Accounts
+  return 404 through AccountExceptionHandler and ApiErrorResponse with the
+  exception message. Missing authentication returns 401 before the use case.
+  ADMIN responses may contain a null customerId. This endpoint does not create
+  or link records or enforce permissions on other endpoints.
 - Registration/onboarding and role and ownership authorization remain
   unimplemented. Order placement still accepts
   the request Customer ID, and reads are not filtered by the authenticated
@@ -192,9 +198,8 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
 - The external identity lookup use case slice is complete and reviewed. The
   user reported 196 passing tests with zero failures, errors, or skipped tests.
   The user subsequently finalized its commit and push. Continue with one
-  small test exercise for the next behavior. HTTP integration, the HTTP
-  response for an identity without a local Account, and onboarding remain
-  pending.
+  small test exercise for the next behavior. Its HTTP integration is now
+  implemented through `/accounts/me`; onboarding remains pending.
 
 - The ADMIN Customer-link restriction slice is complete and reviewed. Two
   domain tests cover rejection with a Customer ID and creation without one.
@@ -209,8 +214,14 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   and lookup returning 200, and creation returning 401 without invoking its
   use case. The creation test supplies a valid body and a CSRF token to isolate
   authentication. The user reported 203 passing tests with zero failures,
-  errors, or skipped tests. This slice is ready for commit after the
-  documentation update; no commit or push for it has been requested.
+  errors, or skipped tests. The user subsequently finalized its commit and push.
+- The current Account HTTP slice is complete and reviewed. AccountControllerTest
+  imports SecurityConfig with active filters and mocks JwtDecoder and the use
+  case. Three tests cover the Account response (200), missing authentication
+  (401, no use case call), and an authenticated identity without a local Account
+  (404 with the standard error body). The user reported 206 passing tests with
+  zero failures, errors, or skipped tests. This slice is ready for commit after
+  the documentation update; no commit or push for it has been requested.
 
 ## Open customer registration decisions
 

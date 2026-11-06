@@ -267,8 +267,8 @@ This document records only technical decisions already adopted by SetupShop.
   subject returns an empty result. Three PostgreSQL integration tests cover
   these cases, and the user reported 194 passing tests in the full suite.
   The lookup does not create or link records. `GET /auth/me` still returns
-  JWT identity only, without consulting Account or Customer. HTTP integration
-  and deciding how an unknown identity enters onboarding remain pending.
+  JWT identity only, without consulting Account or Customer. `/accounts/me`
+  now integrates the lookup through the use case; onboarding remains pending.
 
 ## Retrieve a local Account from external identity
 
@@ -283,9 +283,30 @@ This document records only technical decisions already adopted by SetupShop.
   case expresses that an existing Account is required by its caller. Two unit
   tests cover the returned Account and the exception, including its message
   and repository arguments. The user reported 196 passing tests in the full
-  suite. The use case does not create or link records, and no controller calls
-  it yet. An absent local Account does not invalidate a correctly authenticated
-  JWT; its HTTP handling and onboarding flow remain to be defined.
+  suite. The use case does not create or link records. AccountController now
+  calls it for `/accounts/me`, mapping an absent local Account to 404. This does
+  not invalidate a correctly authenticated JWT; onboarding remains pending.
+
+## Current Account HTTP lookup
+
+- **Context:** A logged-in caller needs to retrieve the local Account while
+  `/auth/me` remains usable before local onboarding.
+- **Decision:** Add authenticated `GET /accounts/me`. AccountController receives
+  the validated JWT, extracts issuer and subject, and calls
+  GetAccountByExternalIdentityUseCase through constructor injection. Return
+  AccountResponse containing id, email, role, and customerId, with no request
+  body or caller-selected identity. AccountExceptionHandler maps
+  AccountNotFoundException to 404 using ApiErrorResponse and the message
+  `Account not found for external identity`. Missing authentication returns 401
+  through Spring Security before the use case is called.
+- **Consequence:** The endpoint resolves existing local Accounts without
+  creating or linking records; ADMIN has a null Customer ID. An authenticated
+  identity with no local Account is a missing resource, not a role-based 403.
+  Onboarding and authorization of other business endpoints remain pending.
+  Three MockMvc tests with active filters, the real SecurityConfig, and mocked
+  decoder/use case cover 200, 401, and the standard 404 JSON response. The user
+  reported 206 passing tests. Real-token manual verification of this new
+  endpoint has not been reported.
 
 ## Password hashing with Argon2id and pepper (superseded)
 

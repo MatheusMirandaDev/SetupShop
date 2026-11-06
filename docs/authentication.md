@@ -15,8 +15,9 @@ authenticated users. Other requests require authentication, including Swagger
 UI and OpenAPI routes. A valid token alone does not establish ownership of a Customer
 or an Order.
 
-The local Account repository now supports lookup by issuer and subject. This
-capability is not yet connected to the HTTP authentication flow.
+`GET /accounts/me` now resolves the local Account using issuer and subject from
+the validated JWT. It returns id, email, role, and customerId for an existing
+Account. This is a lookup, not an onboarding or account-creation operation.
 
 ## Adopted access and onboarding flow (pending implementation)
 
@@ -58,14 +59,41 @@ uses that repository contract to return the Account or throw
 `AccountNotFoundException` with the message
 `Account not found for external identity`. It is a Spring service with a
 read-only transaction and accepts plain strings rather than JWT or HTTP types.
-It is not yet called by a controller; no HTTP status has been assigned to this
-exception.
+AccountController calls it for `GET /accounts/me`; AccountExceptionHandler
+maps the exception to 404 using the standard ApiErrorResponse JSON.
 
 When integrated into an application flow, a found Account can supply the
 local role and Customer ID. An empty result means there is no local Account
 for that identity and onboarding still needs to be handled. The lookup itself
 does not create a Customer or Account, link existing records, or grant access.
 `GET /auth/me` continues to return issuer and subject directly from the JWT.
+
+## Current Account endpoint
+
+Send `GET http://localhost:8080/accounts/me` with the access token selected in
+Postman. An existing Account returns 200 with a body shaped like:
+
+```json
+{
+  "id": 1,
+  "email": "customer@example.com",
+  "role": "CUSTOMER",
+  "customerId": 10
+}
+```
+
+ADMIN Accounts have a null customerId. The endpoint takes no request body or
+identity parameters; issuer and subject come exclusively from the validated
+JWT. It returns no external identity fields in AccountResponse.
+
+Missing authentication returns 401 before the use case is called. A valid
+identity without a local Account returns 404 with timestamp, status, error,
+message (`Account not found for external identity`), and path (`/accounts/me`).
+This is not an authentication failure or a role-based 403. Onboarding handling
+remains to be implemented. The endpoint does not create or link records and
+does not establish authorization for other business endpoints. These behaviors
+are covered by mocked-decoder web tests; no manual real-token check of this
+new endpoint has been reported yet.
 
 ## Development configuration
 
@@ -271,12 +299,18 @@ and active filters, a mocked JwtDecoder, and mocked Product use cases. Three
 tests verify unauthenticated listing and detail return 200 and unauthenticated
 creation returns 401 without calling its use case. The creation test supplies
 a valid JSON body and a CSRF token to isolate authentication; CSRF behavior in
-production is unchanged. The latest full-suite result reported by the user is
+production is unchanged. The full-suite result reported at that stage was
 203 passing tests with zero failures, errors, or skipped tests. No ADMIN role
 check for product writes is established by this slice.
 
-The next business work will connect the validated identity to the local Account
-use case, define the HTTP response for an unknown local identity, and define
-onboarding and Customer linkage. A future frontend will need its own client registration and
+AccountControllerTest adds three tests for the current Account response (200),
+missing authentication (401 without a use case call), and authenticated identity
+without a local Account (404 with the standard error body). They use active
+filters, the real SecurityConfig, a mocked decoder and use case, and test-owned
+issuer/audience configuration. The latest full-suite result reported by the
+user is 206 passing tests with zero failures, errors, or skipped tests.
+
+The next business work will define onboarding, creation/linking of local
+records, and backend role/ownership enforcement. A future frontend will need its own client registration and
 callback configuration. Role and Order ownership rules remain in
 [technical decisions](decisions.md#order-access-policy-planned).

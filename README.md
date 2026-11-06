@@ -26,7 +26,7 @@ later catalog changes do not alter placed orders.
 | Products | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Customers | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Orders | Place an order, get an order by ID, and list orders with pagination |
-| Accounts | Domain model and persistence with unique external identity, email, and Customer link; lookup by issuer and subject through the repository; no Account management HTTP endpoints yet |
+| Accounts | Domain model and persistence with unique external identity, email, and Customer link; authenticated local Account lookup with `GET /accounts/me` |
 | Authentication | Google login through Auth0 and authenticated identity lookup with `GET /auth/me` |
 
 Products and customers remain readable after logical deactivation. Both must be
@@ -36,8 +36,9 @@ they are separate from Accounts.
 Account persistence stores a normalized email, role, Customer link, external
 identity issuer and subject, and database-managed timestamps. The issuer and
 subject pair is unique, and both values are preserved without normalization.
-Local passwords are no longer stored. Registration, linkage of the authenticated
-identity to local records, and role/ownership authorization remain pending. Existing
+Local passwords are no longer stored. `GET /accounts/me` resolves an existing
+Account from the authenticated identity. Registration, creation/linking of local
+records during onboarding, and role/ownership authorization remain pending. Existing
 Customer email updates do not yet synchronize Account email.
 
 The first login version uses Google only through Auth0. Local passwords,
@@ -176,11 +177,39 @@ to the authenticated Customer yet.
 
 ## API
 
+### Current Account
+
+```bash
+curl -i http://localhost:8080/accounts/me \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+```
+
+For an existing local Account, the response is `200 OK` with a body like:
+
+```json
+{
+  "id": 1,
+  "email": "customer@example.com",
+  "role": "CUSTOMER",
+  "customerId": 10
+}
+```
+
+The lookup uses issuer and subject from the validated JWT, not caller-supplied
+IDs or email. ADMIN Accounts have a null Customer ID. Missing authentication
+returns 401. A valid identity without a local Account returns 404 with the
+standard API error body and message `Account not found for external identity`.
+That response does not invalidate the JWT or create local records. Onboarding
+remains pending. `/auth/me` continues to expose the JWT identity independently
+of local registration. Neither endpoint establishes role or Order ownership
+permissions for other operations.
+
 ### Endpoints
 
 | Method | Path | Result |
 | --- | --- | --- |
 | `GET` | `/auth/me` | Return the authenticated issuer and subject (`200`) |
+| `GET` | `/accounts/me` | Return the authenticated local Account (`200`); no local Account (`404`); missing authentication (`401`) |
 | `POST` | `/products` | Create a product (`201`) |
 | `GET` | `/products/{id}` | Get a product (`200`) |
 | `GET` | `/products?page=0&size=20` | List products (`200`) |
@@ -416,7 +445,7 @@ without requiring an error body.
 The project is organized by business feature. `product`, `customer`, and
 `order` each separate business rules, orchestration, and framework code.
 `account` contains the domain, identity lookup use case, persistence, and
-authentication HTTP endpoint:
+authentication and current Account HTTP endpoints:
 
 ```text
 src/main/java/br/com/setupshop/
@@ -427,7 +456,7 @@ src/main/java/br/com/setupshop/
 │   ├── application/usecase/     # Retrieve Account by external identity
 │   └── infrastructure/
 │       ├── persistence/         # JPA repository and adapter
-│       └── web/                 # Authentication controller and identity DTO
+│       └── web/                 # Authentication/Account controllers, DTOs, error handler
 ├── order/
 │   ├── domain/                  # Models, invariants, repository contract
 │   ├── application/usecase/     # Commands, order placement, lookup, and listing
@@ -524,8 +553,8 @@ Account or throw `AccountNotFoundException` with the message
 `Account not found for external identity`. Two unit tests cover both outcomes
 and the repository arguments. The latest full-suite result reported by the
 user at that stage was 196 passing tests. This
-use case is not yet called by a controller, and the exception has no HTTP
-mapping yet.
+use case is now called by AccountController for `/accounts/me`, and
+AccountExceptionHandler maps the exception to 404 with ApiErrorResponse.
 
 The ADMIN restriction full-suite result reported by the user was 200 passing tests with
 zero failures, errors, or skipped tests. The ADMIN restriction adds two domain
@@ -533,12 +562,19 @@ tests and two persistence tests, covering valid creation/storage without a
 Customer ID and rejection of a Customer link. The database rejection test uses
 JdbcTemplate to bypass constructor validation and exercise the V8 constraint.
 
-The latest full-suite result reported by the user is 203 passing tests with
+The public catalog full-suite result reported by the user was 203 passing tests with
 zero failures, errors, or skipped tests. ProductSecurityTest keeps filters
 enabled, imports SecurityConfig, and mocks JwtDecoder and the Product use
 cases. It verifies public listing and detail (200) and unauthenticated creation
 (401), with no create use case invocation. The creation request includes a
 valid body and a CSRF token to isolate the authentication requirement.
+
+The latest full-suite result reported by the user is 206 passing tests with
+zero failures, errors, or skipped tests. AccountControllerTest uses active
+security filters, the real SecurityConfig, and mocked decoder/use case to cover
+the local Account response (200), missing authentication (401), and missing
+local Account (404 with the standard error JSON). It verifies the identity
+arguments passed to the use case and no use case call for unauthenticated access.
 
 `AuthenticationControllerTest` keeps security filters active and replaces
 `JwtDecoder` with a mock. It covers 401 for missing/rejected tokens and the
@@ -554,8 +590,8 @@ against Auth0 with a fresh token (200) and without authentication (401).
 Swagger UI documents the current HTTP contract. The domain model and technical
 decisions record the design behind it. JWT authentication and external identity
 persistence, repository lookup by issuer and subject, and the use case for
-retrieving an existing Account are implemented. Connecting the validated JWT
-to that use case, Customer onboarding, and Account/Customer linkage
+retrieving an existing Account through `GET /accounts/me` are implemented.
+Customer onboarding and creation/linking of Account and Customer records
 remain planned. The Order access policy's role and ownership rules are not yet
 enforced; unauthenticated requests are rejected. Cart, inventory workflows,
 payment, messaging, and cloud deployment remain deferred. The current Order

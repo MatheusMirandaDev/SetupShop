@@ -12,9 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthenticationController {
 
-
-
-
     @GetMapping("/me")
     ResponseEntity<AuthenticatedIdentityResponse> getAuth(@AuthenticationPrincipal Jwt jwt) {
 
