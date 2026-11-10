@@ -26,7 +26,7 @@ later catalog changes do not alter placed orders.
 | Products | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Customers | Create, get by ID, list with pagination, partially update, and logically deactivate |
 | Orders | Place an order, get an order by ID, and list orders with pagination |
-| Accounts | Domain model and persistence with unique external identity, email, and Customer link; authenticated local Account lookup with `GET /accounts/me` |
+| Accounts | Domain model and persistence; transactional local Customer/Account registration use case with duplicate checks; authenticated local Account lookup with `GET /accounts/me` |
 | Authentication | Google login through Auth0 and authenticated identity lookup with `GET /auth/me` |
 
 Products and customers remain readable after logical deactivation. Both must be
@@ -37,8 +37,11 @@ Account persistence stores a normalized email, role, Customer link, external
 identity issuer and subject, and database-managed timestamps. The issuer and
 subject pair is unique, and both values are preserved without normalization.
 Local passwords are no longer stored. `GET /accounts/me` resolves an existing
-Account from the authenticated identity. Registration, creation/linking of local
-records during onboarding, and role/ownership authorization remain pending. Existing
+Account from the authenticated identity. Local registration is implemented by
+`RegisterCustomerAccountUseCase`: it saves Customer and a linked CUSTOMER Account
+in one transaction and rejects existing identities and emails before saving.
+The onboarding endpoint, trusted Auth0 email retrieval, and role/ownership
+authorization remain pending. Existing
 Customer email updates do not yet synchronize Account email.
 
 The first login version uses Google only through Auth0. Local passwords,
@@ -57,6 +60,16 @@ purchase will require Google authentication and completed local onboarding.
 Onboarding will create Customer first, then Account with its Customer ID, in
 one transaction. Account represents access; Customer represents the purchasing
 profile.
+
+The adopted onboarding email policy uses the same verified Auth0 email to
+initialize both records and collects name and phone. Email must come from a
+trusted backend integration, not a frontend verification flag. Later provider
+email changes will not automatically synchronize local records. Existing local
+email conflicts will return a conflict response without automatic linking;
+issuer and subject remain the identity key. The local use case implements
+creation and duplicate checks, assuming its email input has already been
+verified by a trusted integration. That integration and the onboarding HTTP
+contract remain pending; the command does not verify provider email itself.
 
 Each administrator will use an individual ADMIN Account for store management,
 without a Customer link or permission to purchase. Personal purchases require
@@ -569,12 +582,22 @@ cases. It verifies public listing and detail (200) and unauthenticated creation
 (401), with no create use case invocation. The creation request includes a
 valid body and a CSRF token to isolate the authentication requirement.
 
-The latest full-suite result reported by the user is 206 passing tests with
+The Account HTTP slice result reported by the user was 206 passing tests with
 zero failures, errors, or skipped tests. AccountControllerTest uses active
 security filters, the real SecurityConfig, and mocked decoder/use case to cover
 the local Account response (200), missing authentication (401), and missing
 local Account (404 with the standard error JSON). It verifies the identity
 arguments passed to the use case and no use case call for unauthenticated access.
+
+The latest full-suite result reported by the user is 214 passing tests with
+zero failures, errors, or skipped tests. Local registration adds four unit
+tests for creation and duplicate identity/Customer email/Account email rejection,
+two PostgreSQL tests for Account email existence, and two integration tests
+for committed Customer/Account data and rollback when Account construction
+fails. The integration tests invoke the Spring-managed use case without an
+enclosing test transaction and inspect database state through JdbcTemplate.
+Account database write failure and concurrent conflict handling remain untested.
+The new Account conflict handlers map to 409; dedicated HTTP coverage is pending.
 
 `AuthenticationControllerTest` keeps security filters active and replaces
 `JwtDecoder` with a mock. It covers 401 for missing/rejected tokens and the
@@ -591,8 +614,9 @@ Swagger UI documents the current HTTP contract. The domain model and technical
 decisions record the design behind it. JWT authentication and external identity
 persistence, repository lookup by issuer and subject, and the use case for
 retrieving an existing Account through `GET /accounts/me` are implemented.
-Customer onboarding and creation/linking of Account and Customer records
-remain planned. The Order access policy's role and ownership rules are not yet
+Transactional local Customer/Account creation is implemented. The onboarding
+endpoint and trusted provider profile retrieval remain planned. The Order
+access policy's role and ownership rules are not yet
 enforced; unauthenticated requests are rejected. Cart, inventory workflows,
 payment, messaging, and cloud deployment remain deferred. The current Order
 API supports placement, lookup by ID, and paginated listing.

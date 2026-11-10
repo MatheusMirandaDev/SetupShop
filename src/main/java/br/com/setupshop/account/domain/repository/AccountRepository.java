@@ -9,4 +9,6 @@ public interface AccountRepository {
     Account save(Account account);
 
     Optional<Account> findByIssuerAndSubject(String issuer, String subject);
+
+    boolean existsByEmail(String email);
 }

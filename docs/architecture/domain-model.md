@@ -104,8 +104,9 @@ classDiagram
 
 Account domain, persistence, lookup by issuer and subject, and JWT
 authentication are implemented.
-Registration, identity-to-Account linkage, and role/ownership authorization
-remain planned. The optional Customer link in
+Local registration and identity-to-Account linkage are implemented through
+RegisterCustomerAccountUseCase. The onboarding endpoint, trusted provider
+profile retrieval, and role/ownership authorization remain planned. The optional Customer link in
 the diagram reflects the current mapping; `CUSTOMER` accounts always require
 that link. ADMIN Accounts must have no Customer link; this is enforced in the
 domain and database through V8.
@@ -120,6 +121,16 @@ Account second in one database transaction. Individual ADMIN Accounts are
 dedicated to store management and cannot purchase. Personal purchases use a
 separate CUSTOMER Account and a different Google identity under the current
 single-role, Google-only model. Public onboarding will always assign CUSTOMER.
+The adopted onboarding policy will initialize Account and Customer with the
+same verified Auth0 email obtained through a trusted backend integration,
+collect name and phone, and reject existing local email conflicts without
+automatic linking. Later provider email changes will not automatically
+synchronize these records. Identity remains the issuer/subject pair. This
+registration policy is partially implemented: the local use case saves both
+records in one transaction, assigns CUSTOMER, and rejects an existing identity
+or email in either repository before saving. It assumes the input email has
+already been verified by a trusted backend integration; retrieving and checking
+that profile remains pending. Existing Customer email-update behavior is unchanged.
 These target rules do not add anonymous purchasing or change current endpoint
 permissions. Role-based endpoint enforcement remains pending. Rejecting ADMIN
 Customer links is implemented through domain validation and applied V8.
@@ -142,7 +153,12 @@ absent. This does not change the entity relationships in the diagram. The
 use case is now called by `GET /accounts/me` using issuer and subject from the
 validated JWT. The endpoint returns id, email, role, and customerId for an
 existing Account or 404 when absent, while missing authentication returns 401.
-It does not create or link records; onboarding remains pending.
+It does not create or link records; the onboarding HTTP flow remains pending.
+The separate RegisterCustomerAccountUseCase accepts issuer, subject, trusted
+verified email, name, and phone. It saves Customer first and links the returned
+Customer ID to the new Account. Integration tests verify committed data and
+rollback when Account construction fails. They do not cover an Account
+database write failure or concurrent conflicts. No migration is added by this slice.
 Local password hashing and pepper
 are outside this version. See the
 [Google login decision](../decisions.md#google-only-login-through-auth0) and

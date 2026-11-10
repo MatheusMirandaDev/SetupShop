@@ -8,8 +8,10 @@ issuer, audience, and validity times, then exposes the authenticated issuer
 and subject through `GET /auth/me`.
 
 There is no frontend yet. Postman and the system browser act as the development
-client. Account/Customer linkage, onboarding, local role checks, Customer activation
-checks, and Order ownership authorization are not implemented in this slice.
+client. Local transactional Customer/Account registration is implemented as an
+application use case. The onboarding HTTP endpoint, trusted provider profile
+retrieval, local role checks, Customer activation checks, and Order ownership
+authorization remain pending.
 `GET /products` and `GET /products/{id}` are public for anonymous and
 authenticated users. Other requests require authentication, including Swagger
 UI and OpenAPI routes. A valid token alone does not establish ownership of a Customer
@@ -27,7 +29,24 @@ Purchasing requires Google authentication and completed local onboarding.
 Google login creates or recognizes an Auth0 identity, not a local Account.
 Onboarding will collect the required business data, save Customer to obtain
 its ID, then save a CUSTOMER Account with that ID and the validated issuer and
-subject, committing both records in the same database transaction.
+subject, committing both records in the same database transaction. This local
+creation step is implemented by RegisterCustomerAccountUseCase; it is not yet
+exposed through an onboarding endpoint.
+
+The adopted onboarding policy initializes Account and Customer with the same
+verified email obtained from Auth0 through a trusted backend integration.
+Name and phone are collected during onboarding. The exact profile retrieval
+mechanism remains to be defined; do not assume the API access token contains
+email or trust an email-verification flag supplied by the frontend.
+
+Issuer and subject remain the identity key. Later provider email changes will
+not automatically synchronize local emails in this version. An email already
+used by a local Account or Customer must result in a conflict response, without
+automatic linking or access to an existing record. The detailed conflict error
+contract and local email-change policy are still open. Local duplicate checks
+are implemented in the use case; the complete onboarding flow remains pending.
+These rules do not change `/accounts/me` or existing Customer
+endpoints. See [the email decision](decisions.md#onboarding-email-source-and-conflicts-planned).
 
 Keep Account and Customer separate. A dedicated ADMIN Account represents an
 individual staff member's management access, has no Customer link, and cannot
@@ -47,6 +66,32 @@ Other access rules still require implementation: Order placement accepts a reque
 ID. Role-based endpoint checks, including preventing ADMIN purchases, remain
 pending. A database constraint on Account alone does not enforce Order access.
 See [the decisions](decisions.md#dedicated-administrative-accounts-planned).
+
+## Local transactional registration
+
+`RegisterCustomerAccountUseCase.execute(RegisterCustomerAccountCommand)` accepts
+issuer, subject, email, name, and phone, with no JWT or HTTP types. Its caller
+must supply a validated identity and an email already verified through a trusted
+backend integration. The command itself provides no proof of verification.
+
+The Spring service uses a write transaction. It rejects an existing issuer/subject
+pair, constructs Customer to normalize and validate business data, checks the
+normalized email in both CustomerRepository and AccountRepository, then saves
+Customer and a linked Account with the server-assigned CUSTOMER role. It returns
+the saved Account. Both models initialize email from the same input.
+
+Duplicate identities raise `AccountAlreadyExistsException` with
+`Account already exists for external identity`. Customer email conflicts raise
+`EmailAlreadyExistsException` with `Customer email already exists: <email>`;
+Account email conflicts raise `AccountEmailAlreadyExistsException` with
+`Account email already exists: <email>`. Email messages use the normalized value.
+Existing records are never automatically linked. AccountExceptionHandler maps
+the two Account conflict exceptions to 409 with ApiErrorResponse; dedicated HTTP
+tests for those mappings remain pending. No onboarding endpoint exists yet.
+
+Prechecks do not remove concurrent insertion races. Database uniqueness remains
+the integrity safeguard; translating concurrent constraint failures into the
+onboarding conflict response still needs implementation and tests.
 
 ## Local Account lookup
 
@@ -307,10 +352,20 @@ AccountControllerTest adds three tests for the current Account response (200),
 missing authentication (401 without a use case call), and authenticated identity
 without a local Account (404 with the standard error body). They use active
 filters, the real SecurityConfig, a mocked decoder and use case, and test-owned
-issuer/audience configuration. The latest full-suite result reported by the
-user is 206 passing tests with zero failures, errors, or skipped tests.
+issuer/audience configuration. The full-suite result reported at that stage
+was 206 passing tests with zero failures, errors, or skipped tests.
 
-The next business work will define onboarding, creation/linking of local
-records, and backend role/ownership enforcement. A future frontend will need its own client registration and
+The latest full-suite result reported by the user is 214 passing tests with
+zero failures, errors, or skipped tests. The local registration slice adds four
+unit tests for creation and the three duplicate checks, two PostgreSQL repository
+tests for Account email existence, and two integration tests for committed data
+and rollback when Account construction rejects an oversized subject. These
+integration tests disable the surrounding test transaction, invoke the
+Spring-managed use case, and query PostgreSQL through JdbcTemplate after it
+returns or throws. They do not establish rollback coverage for Account database
+write failures or concurrent conflict handling.
+
+The next business work will finish the onboarding HTTP contract and trusted
+profile retrieval, followed by backend role/ownership enforcement. A future frontend will need its own client registration and
 callback configuration. Role and Order ownership rules remain in
 [technical decisions](decisions.md#order-access-policy-planned).

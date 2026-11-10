@@ -178,8 +178,9 @@ This document records only technical decisions already adopted by SetupShop.
 - **Consequence:** Each Customer can have at most one Account. Account no longer
   stores a password hash. Account persistence stores and looks up external
   identity data; token validation belongs to the Resource Server configuration.
-  Onboarding remains unimplemented. Email uniqueness remains implemented while its role in
-  onboarding and provider email changes remains open. The nullable Customer
+  Local transactional registration is implemented; the onboarding HTTP flow
+  and trusted provider profile retrieval remain pending. The email policy below
+  defines initial email values and handling of provider changes. The nullable Customer
   link is required for CUSTOMER and forbidden for ADMIN. Domain validation and
   V8 enforce the ADMIN restriction without changing V6 or V7.
   V7 leaves V6 unchanged, adds required identity columns and composite
@@ -333,7 +334,7 @@ This document records only technical decisions already adopted by SetupShop.
   Auth0. The choices above are historical and are not requirements for the
   first login version.
 
-## Customer account registration (planned)
+## Customer account registration (partially implemented)
 
 - **Context:** `Customer` represents business data, while a login account
   represents credentials and permissions. A person should enter their data
@@ -348,10 +349,56 @@ This document records only technical decisions already adopted by SetupShop.
 - **Consequence:** Onboarding cannot leave only one of the local records
   persisted. Account storage now supports issuer and subject without a password
   hash; email uniqueness remains enforced. The former plan
-  to accept a password at registration is superseded. Provider and local email
-  synchronization, handling of existing email conflicts and Customers without
-  Accounts, and the onboarding HTTP contract remain open. Matching email alone
+  to accept a password at registration is superseded. The email policy below
+  defines the initial values and conflict behavior. Access for Customers without
+  Accounts and the onboarding HTTP contract remain open. Matching email alone
   must not grant ownership of an existing Customer.
+- **Implementation:** RegisterCustomerAccountUseCase accepts a command containing
+  issuer, subject, trusted verified email, name, and phone. In one Spring write
+  transaction it rejects an existing identity, constructs Customer, checks its
+  normalized email in both repositories, saves Customer, and saves and returns
+  a CUSTOMER Account linked to the saved Customer ID. Both models normalize the
+  same input email. AccountRepository.existsByEmail delegates to Spring Data;
+  PostgreSQL tests cover existing and absent emails, including ADMIN Accounts.
+  No migration is needed. Four unit tests cover creation and the three duplicate
+  checks. Two integration tests verify committed data and rollback when Account
+  construction fails, using the Spring proxy without an enclosing test transaction
+  and inspecting PostgreSQL with JdbcTemplate. The user reported 214 passing
+  tests with zero failures, errors, or skipped tests in the full suite.
+  The onboarding endpoint and trusted provider profile retrieval are not
+  implemented. The command assumes trusted inputs; it does not validate an
+  Auth0 profile or establish email verification itself.
+
+## Onboarding email source and conflicts (planned)
+
+- **Context:** Google authentication establishes identity, but local Account and
+  Customer both require unique emails. A caller-supplied email or verification
+  flag does not establish a verified provider profile or ownership of existing
+  local records.
+- **Decision:** Initialize Account and Customer using the same verified email
+  obtained from Auth0 through a trusted backend integration. Collect name and
+  phone during onboarding. Continue to identify the caller by validated issuer
+  and subject; email is not an identity key. Do not automatically synchronize
+  later changes to the provider email in this version. If the email conflicts
+  with an existing local Account or Customer, return a conflict response and
+  do not automatically link records or grant access to them.
+- **Consequence:** The backend must obtain the profile from a trusted source
+  and require verified email before local registration. Do not trust a request
+  field asserting email verification or assume every access token contains
+  email claims. The exact profile retrieval mechanism, conflict error body,
+  onboarding endpoint, and later local email-change policy remain to be defined.
+  Unit tests of registration can supply trusted profile inputs, but do not
+  replace testing the eventual verification boundary. Local creation and
+  duplicate checks are implemented; trusted profile retrieval and the complete
+  onboarding HTTP contract remain pending. Existing Customer email update
+  behavior is unchanged.
+- **Implementation limits:** Existing identities raise AccountAlreadyExistsException;
+  Customer and Account email conflicts raise EmailAlreadyExistsException and
+  AccountEmailAlreadyExistsException, respectively, before any save. The two
+  Account conflict exceptions are mapped to 409 with ApiErrorResponse, but
+  dedicated HTTP coverage remains pending. Database uniqueness still protects
+  concurrent writes; prechecks alone cannot prevent races. Concurrent conflict
+  translation and tests for an Account database write failure remain pending.
 
 ## Public catalog and purchase onboarding (planned)
 

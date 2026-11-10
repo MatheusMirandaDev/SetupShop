@@ -17,6 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -402,4 +403,45 @@ class AccountRepositoryIntegrationTest {
             )
         );
     }
+
+    @Test
+    void shouldReturnTrueWhenAccountEmailExists() {
+
+        String email = "   matheus.MIRANDA@gmail.com   ";
+        String normalizedEmail = "matheus.miranda@gmail.com";
+        Long customerId = null;
+        AccountRole role = AccountRole.ADMIN;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "google-oauth2|123456789";
+
+        Account account = new Account(email, customerId, role, issuer, subject);
+        accountRepository.save(account);
+        entityManager.flush();
+        entityManager.clear();
+
+        boolean emailExists = accountRepository.existsByEmail(normalizedEmail);
+
+        assertTrue(emailExists);
+    }
+
+    @Test
+    void shouldReturnFalseWhenAccountEmailDoesNotExist() {
+
+        String email = "matheus.batista@gmail.com";
+        String anotherEmail = "matheus.miranda@gmail.com";
+        Long customerId = null;
+        AccountRole role = AccountRole.ADMIN;
+        String issuer = "https://setupshop-test.auth0.com/";
+        String subject = "google-oauth2|123456789";
+
+        Account account = new Account(email, customerId, role, issuer, subject);
+        accountRepository.save(account);
+        entityManager.flush();
+        entityManager.clear();
+
+        boolean emailExists = accountRepository.existsByEmail(anotherEmail);
+
+        assertFalse(emailExists);
+    }
+
 }

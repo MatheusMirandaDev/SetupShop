@@ -139,8 +139,18 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   exception message. Missing authentication returns 401 before the use case.
   ADMIN responses may contain a null customerId. This endpoint does not create
   or link records or enforce permissions on other endpoints.
-- Registration/onboarding and role and ownership authorization remain
-  unimplemented. Order placement still accepts
+- `RegisterCustomerAccountUseCase.execute(RegisterCustomerAccountCommand)`
+  implements local registration in one write transaction. It accepts issuer,
+  subject, a trusted verified email, name, and phone; saves Customer first;
+  then saves and returns a CUSTOMER Account linked to the saved Customer ID.
+  Both models normalize the same input email. Before saving, it rejects an
+  existing external identity with AccountAlreadyExistsException, an existing
+  Customer email with EmailAlreadyExistsException, and an existing Account
+  email with AccountEmailAlreadyExistsException. AccountRepository.existsByEmail
+  delegates to Spring Data. Email conflicts never link existing records.
+  The command itself does not retrieve or verify the provider profile.
+- The onboarding HTTP endpoint, trusted Auth0 profile retrieval, and role and
+  ownership authorization remain unimplemented. Order placement still accepts
   the request Customer ID, and reads are not filtered by the authenticated
   Customer. Authentication alone does not enforce the adopted Order access
   policy. See `docs/decisions.md` and `docs/authentication.md`. Never edit
@@ -167,7 +177,8 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
 
 ## Mentoring workflow for customer registration
 
-- Give one small exercise at a time, starting with a test. Wait for the user's
+- Give one complete exercise per behavior, starting with a test; do not split
+  its preparation into repeated micro-steps. Wait for the user's
   implementation, review it without changing their files, and let them make
   corrections before validating and advancing. Provide the proposed test name.
 - Do not implement exercises for the user unless they explicitly request it.
@@ -220,18 +231,38 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
   case. Three tests cover the Account response (200), missing authentication
   (401, no use case call), and an authenticated identity without a local Account
   (404 with the standard error body). The user reported 206 passing tests with
-  zero failures, errors, or skipped tests. This slice is ready for commit after
-  the documentation update; no commit or push for it has been requested.
+  zero failures, errors, or skipped tests. The user subsequently confirmed
+  its commit and push.
+- The local registration use case is implemented and reviewed. Four unit
+  tests cover creation and the three duplicate checks. Two repository tests
+  cover Account email existence, including an ADMIN without a Customer link.
+  Two use case integration tests cover committed Customer/Account data and
+  rollback when Account construction rejects a subject longer than 255
+  characters. They invoke the Spring-managed use case without an enclosing
+  test transaction and inspect PostgreSQL through JdbcTemplate. The user
+  reported a successful full suite with 214 tests and zero failures, errors,
+  or skipped tests. This result does not establish rollback coverage for an
+  Account database write failure or concurrent conflict handling.
+  AccountExceptionHandler maps both new Account conflict exceptions to 409,
+  but dedicated HTTP tests for these handlers remain pending. Documentation
+  is updated; finish that HTTP coverage and review the staged diff before
+  declaring the slice ready for commit. No commit or push is authorized.
 
 ## Open customer registration decisions
 
-- Define the purpose and synchronization of Account and Customer emails with
-  the provider profile, including how to handle provider email changes and
-  existing local email conflicts. Account email uniqueness was preserved during
-  external identity adaptation; settle its role before onboarding. Keep the
-  adopted limit of one Account per Customer.
+- Adopted onboarding email policy (partially implemented): initialize Account
+  and Customer with the same verified email obtained from Auth0 through a
+  trusted backend integration; collect name and phone during onboarding.
+  Identify the caller by validated issuer and subject, never email. Do not
+  trust a frontend-supplied email verification flag. Do not automatically
+  synchronize later provider email changes in this version. Existing local
+  email conflicts must produce a conflict response without automatic linking.
+  Keep one Account per Customer. Local transactional creation and duplicate
+  checks are implemented. Define the exact trusted profile retrieval mechanism,
+  complete the onboarding conflict HTTP contract and concurrent conflict
+  handling, and define the later local email-change policy.
 - Define the onboarding endpoint and response, collection of required business
-  data such as phone, and atomic local creation of Customer and Account. Auth0
+  data such as phone, using the implemented transactional creation use case. Auth0
   identity creation is outside the local database transaction.
 - Decide how existing Customers without accounts obtain access and how their
   ownership is verified before an Account is linked.
@@ -242,8 +273,8 @@ env -u AUTH0_ISSUER_URI -u AUTH0_AUDIENCE ./mvnw test
 - Decide whether deactivating a Customer disables its Account.
 - The development Auth0 tenant, API audience, and Postman PKCE client are
   configured; token validation is implemented. Define production configuration,
-  the future frontend login flow, and provider email verification requirements
-  for onboarding. Do not implement local password hashing or recovery for the
+  the future frontend login flow, and how the backend obtains and checks the
+  verified provider email required for onboarding. Do not implement local password hashing or recovery for the
   Google-only version.
 - Define permissions for Product and Customer endpoints, including the current
   `POST /customers` and Customer email changes.
